@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-22T05:00:38.109Z",
-  "durationMs": 15662,
+  "generatedAt": "2026-09-22T04:58:49.816Z",
+  "durationMs": 15468,
   "mode": "playwright-ui-ops",
   "definitions": {
     "note": "本报告由 Playwright 驱动真实 UI 的固定操作脚本取数；static 字段为原有 happy-dom 静态能力，不参与门禁判定。",
@@ -1245,9 +1245,9 @@
     }
   ],
   "gate": {
-    "result": "pass",
+    "result": "no-baseline",
+    "note": "已写入本次结果为合入前基线",
     "baselineFile": "qa/report/metrics-baseline.json",
-    "baselineGeneratedAt": "2026-09-22T04:58:49.816Z",
     "checks": [
       {
         "name": "residueDetectorSelfTest（判别力自检：五类注入物全部命中）",
@@ -1260,20 +1260,7 @@
         "ok": true,
         "actual": 0,
         "expected": 0
-      },
-      {
-        "name": "hitRate >= baseline",
-        "ok": true,
-        "actual": 1,
-        "expected": ">= 1"
-      },
-      {
-        "name": "losslessRate >= baseline",
-        "ok": true,
-        "actual": 0.888,
-        "expected": ">= 0.888"
       }
-    ],
-    "failed": []
+    ]
   }
 }

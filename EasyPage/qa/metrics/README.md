@@ -1,115 +1,163 @@
-# qa/metrics · 质量度量脚本（T004）
+# qa/metrics · 质量度量脚本（T004 → Playwright 操作级升级）
 
-`run-metrics.mjs` 是 Stage 0 的**轻量版**度量入口（Node ESM，仅依赖仓库已装好的 `happy-dom`，
-不引入 Playwright / parse5 / 任何新包）。编辑器本体未接入前，它只真实计算当前可计算的两项：
-**losslessRate** 与 **residueCount**；**hitRate** 固定为占位 `null`。
+`run-metrics.mjs` 是样本库质量度量的**门禁入口**（Node ESM）。契约 §8.2 原文承诺的
+「T101 有真实编辑能力后，由 Playwright 跑『固定操作脚本』补全 hitRate；residue 升级为 §8.3 的
+DOM 级纯函数清理」在本版本**已兑现**：
+
+- `hitRate`：由 Playwright 驱动**真实 UI** 的固定操作脚本取数，是实数（0..1），不再是占位 `null`；
+- `losslessRate`：对「导入后不做任何编辑直接导出」的产物与原始样本做规范化逐位比对（契约 §8.2 原文口径）；
+- `residueCount`：在**真实浏览器**中 `DOMParser` 解析导出 HTML 后做 DOM 级判定（不再用六条正则）；
+- 原 happy-dom 静态能力保留在报告 `static` 字段，**明确不参与门禁判定**。
 
 调用方式：
 
 ```bash
-npm run qa:metrics        # = node qa/metrics/run-metrics.mjs
+npm run qa:metrics                     # = node qa/metrics/run-metrics.mjs
+npm run qa:metrics:update-baseline     # 追加 --update-baseline：把本次结果写为合入前基线
 ```
 
 产出：
-- 控制台打印人类可读简表；
-- 写 `qa/report/metrics-latest.json`（结构见文末）。
 
-> 硬红线：本脚本**绝不** import grapesjs / interact.js / moveable；对 `qa/fixtures/*.html`
-> 只做「解析 → 规范化 → 逐位比较」，秒级返回。
+- 控制台打印人类可读简表（逐样本 hit / lossless / residue / 失败原因）；
+- 写 `qa/report/metrics-latest.json`（结构见「四」）；
+- 首次运行（或带 `--update-baseline`）写 `qa/report/metrics-baseline.json`（同结构，作为「合入前基线」载体）。
 
----
+`.gitignore` 只放行这两个 JSON：`qa/report/*.json` 被忽略，`metrics-baseline.json` 与
+`metrics-latest.json` 例外入库。
 
-## 一、DOM diff 判定口径（losslessRate 的算法）
-
-对每个样本，把 before / after 两段 HTML 分别用 `happy-dom` 的 `DOMParser.parseFromString(html, 'text/html')`
-解析成 Document，再各自展平成一条**规范化 token 流**，然后按下述规则逐位比较。
-
-### 1. 遍历方式
-- 文档序前序遍历：`<!DOCTYPE>` → `<html>` 子树（head/body 全部后代）。
-- 节点类型映射：
-  - `ELEMENT_NODE(1)` → 一个 `ELEM` token；
-  - `TEXT_NODE(3)` → 一个 `TEXT` token（纯空白则丢弃，见下）；
-  - `COMMENT_NODE(8)` → 一个 `COMMENT` token；
-  - 其他（PI / 文档碎片等）→ `OTHER<type>` 占位 token，仅记录不做语义比较。
-
-### 2. 节点规范化
-- 元素标签名统一转小写比较（HTML 标签本就大小写不敏感）。
-- `<!DOCTYPE>` 只比较 `doctype.name`（`html`），不比较公开/系统标识符。
-
-### 3. 属性规范化（属性排序）
-- 取出元素全部属性，按**属性名字典序升序排序**后再参与比较（消除书写顺序差异）。
-- 属性值做**空白归一**：把连续空白折叠为单个空格并 trim（见下）。
-- 比较单元形如 `ELEM <p> [["class","x"],["id","a"]]`。
-
-### 4. 文本归一与空白处理
-- 文本节点内容：连续空白（制表符/换行/多空格）折叠为单个空格，再 trim；
-  若结果为空串，则**整个文本节点丢弃**（即纯空白节点不参与比较）。
-- 注释节点内容同样做空白折叠后保留（注释也算节点，参与比较）。
-- 这样，仅因换行/缩进/排版造成的空白差异不会被判为差异，符合契约 §8.2「忽略空白差异」。
-
-### 5. 一致率与首个差异位置
-- 设两 token 流长度为 `lenB / lenA`，总比较单元数 `total = max(lenB, lenA)`。
-- 逐位 `tokensB[i] === tokensA[i]` 计数为 `matched`。
-- **losslessRate = matched / total**（任一侧缺节点即记为不一致，长度差本身扣分）。
-- 首个差异位置：第一个 `tokensB[i] !== tokensA[i]` 的下标 `i`，并在 JSON `notes` 中给出
-  before / after 两侧 token 原文，便于定位。
-- 跨样本汇总时，**totals.losslessRate = Σ matched / Σ total**（合并 token 流，而非对样本取平均）。
-
-> 当 before 与 after 是同一文件（Stage 0 现状），两次解析结果必然逐位一致，losslessRate 自然为
-> `1.0`——这是 happy-dom 真实解析 + 真实比较的结果，不是编造。
+> 硬红线：本脚本**绝不** import grapesjs / interact.js / moveable；不引入任何新 npm 包
+> （只用仓库已装的 `playwright`（含 chromium）、`vite`、`happy-dom`）。
+> 本脚本只依赖稳定 DOM 契约（按钮可见文案、`#ep-canvas-frame`、`#ep-overlay-root [data-dir="se"]`、
+> `#ep-preview-frame`、`.ep-box input[type=number]`、`[data-ep-editing]`），不依赖任何内部实现细节。
 
 ---
 
-## 二、三项指标定义
+## 一、固定操作脚本（写死在脚本里，可复现）
 
-### 1. losslessRate（无损率，真实计算）
-- 口径：见上「一」。当前 before = after = 同一文件，基线应为 `1.0000`。
-- 未来接入编辑器后，对「导入后不做任何编辑直接导出」的产物跑同一比较，衡量回写保真度。
+对每个样本按序执行，全部通过且导出含预期改动才算 **hit**：
 
-### 2. residueCount（残留数，真实计算）
-- 对 **after HTML 原文**做六类正则全局匹配，命中数相加：
+| # | 操作 | 驱动方式 |
+| --- | --- | --- |
+| 1 | 粘贴导入 | `textarea.fill(源) + 「导入 HTML」` |
+| 2 | 改文本 | 双击文本目标（`H1..H6/P/BUTTON/SPAN/LI/A` 白名单按优先级取第一个可见者）→ `fill(标记)` → Enter |
+| 3 | 改背景色 | 选中方块目标 → 样式面板背景色控件提交 `#123456` |
+| 4 | 移动 | 合成 PointerEvent 拖拽 (10, 8)（两次 `pointerdown`：第一次选中并 attach 适配器，第二次启动拖拽） |
+| 5 | 缩放 | 样式面板写显式 `120px/80px` → 重选触发手柄重算 → 拖 `se` 手柄 (+40, +30) |
+| 6 | 撤销 | 焦点移出画布后 `Ctrl+Z` |
+| 7 | 重做 | `Ctrl+Shift+Z` |
+| 8 | 切预览 | 「预览」开 → 校验预览态含标记文本 → 再点「预览」关 |
+| 9 | 导出 | 「导出 HTML」并捕获导出文件 |
 
-  | 口径 | 正则 | 说明 |
-  | --- | --- | --- |
-  | `data-ep-` | `/data-ep-/g` | 编辑器注入的临时属性 |
-  | `class="ep-` | `/class="ep-/g` | 编辑器外壳类名（带 `class="` 前缀） |
-  | `ep-overlay-root` | `/ep-overlay-root/g` | 覆盖层根容器 id |
-  | `contenteditable` | `/contenteditable/g` | 就地编辑临时属性 |
-  | `<style id="ep-` | `/<style\s+id="ep-/g` | 编辑器注入的 `<style>` |
-  | `<script id="ep-` | `/<script\s+id="ep-/g` | 编辑器注入的 `<script>` |
+选择器与手势写法与既有 e2e（`tests/e2e/startpage.spec.ts` / `inline-edit.spec.ts` /
+`drag.spec.ts` / `resize.spec.ts` / `preview.spec.ts`）同源，避免另造一套不可信驱动方式。
 
-- per-fixture 的 `residue` 只列出命中数 > 0 的类别（`{kind, count}`），未命中为空数组。
-- 契约要求导出残留**必须为 0**，否则导出阻断；当前样本为原始页面，基线 `residueCount = 0`。
+## 二、三项门禁指标定义
 
-### 3. hitRate（命中率，占位 null）
-- 契约 §8.2 定义：能完成「改 h1 → 调色 → 位移(10,8) → 撤销 → 重做 → 预览 → 导出」且导出含预期改动
-  的样本占比。
-- **当前编辑器尚未接入（T101 之后才接通）**，无法真实测量，故 `hitRate` 固定为 `null`，
-  JSON 与控制台均显式标注「未接入编辑器，hitRate 基线为占位 null」。**严禁编造任何命中率数字。**
+### 1. hitRate（命中率，真实计算）
+- 口径（契约 §8.2 原文）：**能成功完成上述全部固定操作、且导出包含预期改动（标记文本 / 位移 /
+  缩放尺寸）的样本数 ÷ 总样本数**。
+- 逐样本还落盘每步是否成功、失败原因、导出 diff 摘要（见「四」）。
 
----
+### 2. losslessRate（无损率，真实计算）
+- 口径（契约 §8.2 原文）：对**「导入后不做任何编辑直接导出」**的产物与原始样本做规范化
+  token 逐位比对（忽略空白差异、属性书写顺序），取一致率；
+  跨样本汇总为 **Σ matched / Σ total**（合并 token 流，而非对样本取平均）。
+- 与旧版的本质差别：`before` 是**磁盘上的样本原文**、`after` 是**真实经导入→导出往返后的产物**，
+  不再是把同一个字符串 parse 两次的构造性自比对。
+- 规范化算法见「三」。
 
-## 三、输出 JSON 结构
+### 3. residueCount（残留数，DOM 级真实计算）
+- 在真实浏览器内 `new DOMParser().parseFromString(导出HTML, 'text/html')`，逐个元素判定：
+  - 任何 `data-ep-*` 属性（含 `data-ep-editing`）；
+  - 类名以 `ep-` / `ep__` 开头（编辑器外壳 BEM 类名）；
+  - `id === "ep-overlay-root"`；
+  - 存在 `contenteditable` 属性；
+  - 编辑器注入的 `<style id="ep-*">` / `<script id="ep-*">`。
+- 契约要求**必须为 0**，否则导出阻断；本脚本把它作为门禁硬条件。
+- **判别力自检**：脚本先对一段人造脏 HTML（五类注入物各一）跑同一个检测函数，
+  必须五类全部命中；自检不过 → 门禁直接判失败（防止「检测器空实现导致永远为 0」）。
+
+### 4. editedRoundTripFidelity（补充口径，非契约原有项）
+- 「导出前的编辑态 DOM」↔「导出产物」的 token 一致率，即**导入→编辑操作→导出**这条真实链路上
+  的导出回写保真度。两侧均不计 `DOCTYPE` token（`documentElement.outerHTML` 天然不含 doctype，
+  导出产物带 `<!DOCTYPE html>` 前缀，不对齐会让 token 流整体错位一位）。
+- 该项用于补充说明编辑链路的保真度，**不参与门禁判定**。
+
+### 5. 门禁判定（报告 `gate` 字段）
+- `residueCount` 必须为 0，且残留检测自检必须通过；
+- `hitRate`、`losslessRate` **不得低于** `metrics-baseline.json` 中的数值；
+- 任一项不满足 → `gate.result = "fail"` 且**退出码为 1**；
+- 基线文件不存在时 → `no-baseline`（只记录不判定），并在本次运行写入基线。
+
+## 三、静态对照口径（report `static`，**不参与门禁**）
+
+保留 T004 原有 happy-dom 能力，作为对照数据：
+
+对每个样本，把「样本原文」与「未编辑往返导出的产物」两份 HTML 分别用 happy-dom 的
+`DOMParser.parseFromString(html, 'text/html')` 解析成 Document，各自展平成一条**规范化 token 流**，逐位比较：
+
+1. **遍历**：文档序前序遍历 `<!DOCTYPE>` → `<html>` 子树；`ELEMENT_NODE(1)` → `ELEM` token、
+   `TEXT_NODE(3)` → `TEXT` token（纯空白丢弃）、`COMMENT_NODE(8)` → `COMMENT` token。
+2. **节点规范化**：标签名小写；`<!DOCTYPE>` 只比较 `doctype.name`。
+3. **属性规范化**：属性按**名字典序升序**排序后比较；属性值做空白折叠 + trim。
+4. **文本归一**：连续空白折叠为单个空格再 trim；结果为空串则整个文本节点丢弃（即忽略纯排版空白差异）。
+5. **一致率**：`total = max(lenB, lenA)`，`losslessRate = matched / total`；跨样本汇总为 Σmatched/Σtotal。
+
+`static.totals.residueCount` 仍用原六条正则（`data-ep-` / `class="ep-` / `ep-overlay-root` /
+`contenteditable` / `<style id="ep-` / `<script id="ep-`）统计，仅作对照。
+
+## 四、输出 JSON 结构
 
 ```jsonc
 {
-  "generatedAt": "2026-09-21T...Z",
-  "totals": { "hitRate": null, "losslessRate": 1.0, "residueCount": 0 },
+  "generatedAt": "2026-09-22T...Z",
+  "durationMs": 15172,
+  "mode": "playwright-ui-ops",
+  "definitions": {
+    "contractSource": "docs/plan/01-技术基线与接口契约.md §8.2 / §8.3",
+    "contractText": { /* 契约原文逐条引用：fixedOpScript / hitRate / losslessRate / residueCount / stripList */ },
+    "fixedOperationScript": [ /* 固定操作脚本 9 步 */ ],
+    "hitRate": "…口径说明 + 契约原文引用…",
+    "losslessRate": "…",
+    "residueCount": "…",
+    "editedRoundTripFidelity": "…",
+    "staticMetrics": "…不参与门禁…"
+  },
+  "totals": {
+    "hitRate": 1,
+    "losslessRate": 0.888,
+    "residueCount": 0,
+    "editedRoundTripFidelity": 1,
+    "samples": 10,
+    "hitSamples": 10
+  },
+  "static": { "participatesInGate": false, "totals": { /* … */ }, "perFixture": [ /* … */ ] },
+  "residueDetectorSelfTest": { "ok": true, "expected": 5, "actual": 5, "kinds": [ /* 五类 */ ] },
+  "gate": { "result": "pass", "checks": [ /* 逐条检查 */ ], "failed": [] },
   "perFixture": [
     {
       "id": "01-script-carousel",
       "category": "脚本轮播",
-      "hit": null,
-      "losslessRate": 1.0,
-      "residue": [],
-      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": { "editText": { "ok": true, "detail": "…" }, "setBg": {}, "move": {}, "resize": {}, "undo": {}, "redo": {}, "preview": {}, "export": {} },
+      "failReasons": [],
+      "exportDiff": { "hasExport": true, "exportedLength": 812, "expectedChanges": { "hasMarker": true, "hasTransform": true, "hasResized": true, "hasBg": true }, "summary": "editText:ok setBg:ok …" },
+      "residue": { "total": 0, "hits": [] },
+      "losslessRate": 0.8571,
+      "roundTrip": { "losslessRate": 0.8571, "matched": 78, "total": 91 },
+      "editedRoundTripFidelity": 1,
+      "boxes": { "preset": { "width": "120px", "height": "80px" }, "resized": {}, "undo": {}, "final": {} },
+      "notes": "文本目标=<h2>；方块目标=<div>"
     }
-  ],
-  "notes": "未接入编辑器，hitRate 基线为占位 null；……"
+  ]
 }
 ```
 
-## 四、维护说明
+## 五、维护说明
+
 - 本目录只放脚本与本文档；样本只放 `qa/fixtures/`；报告只放 `qa/report/`。
-- 后续 T101 / T115 接通编辑器与预览后，在本脚本内把 `hit` 与未来的 `previewConsistency` 由 `null`
-  改为真实计算，不得改动本文件已冻结的 diff / residue 口径。
+- 新增样本时**无需改脚本**：目标元素由脚本在页面内按「能力 + 可见 + 标签白名单」自动挑选。
+- 固定操作脚本的改动必须同步更新本文件「一」与契约 §8.2 的口径记录；
+  静态对照口径（「三」）为 T004 冻结口径，不得改动。
+- 脚本运行需要能启动 vite dev server（自动选端口，`strictPort: false`）与 chromium（`playwright` 已装浏览器）。

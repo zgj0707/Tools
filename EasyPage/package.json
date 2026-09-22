@@ -16,7 +16,8 @@
     "e2e": "playwright test",
     "check:licenses": "node scripts/check-licenses.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run check:licenses",
-    "qa:metrics": "node qa/metrics/run-metrics.mjs"
+    "qa:metrics": "node qa/metrics/run-metrics.mjs",
+    "qa:metrics:update-baseline": "node qa/metrics/run-metrics.mjs --update-baseline"
   },
   "dependencies": {
     "idb": "^8.0.0",
