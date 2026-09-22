@@ -143,3 +143,27 @@ npm run build      # 生产构建
 - **覆盖层（overlay）**：编辑器自己画的选中框、手柄、对齐线、锁遮罩，位于 `#ep-overlay-root`，**不属于被编辑页面**。
 - **干净导出**：导出的 HTML 不含任何编辑器注入标记，且未被编辑的部分与导入时保持一致（无损）。
 - **行走骨架（Walking Skeleton）**：阶段 1 要先打通的最薄端到端链路：导入 → 改一处文字 → 预览 → 导出干净 HTML，哪怕其他功能都还没有。
+
+---
+
+## 10. 版本库与回滚点（2026-09-22 补）
+
+仓库此前只有本地文件树、没有 `.git`，铁律 7「一卡一分支一 PR + 回滚 tag」**没有载体**（diff 都出不来）。
+现已初始化：分支 `master`，每完成一批可独立回滚的改动即打 tag，命名 `类型-主题-日期`。
+
+| tag | commit | 内容 |
+| --- | --- | --- |
+| `baseline-20260922` | 80f306e | 审阅基线（未修任何已知偏差的原始状态） |
+| `chore-lf-20260922` | e162666 | 统一文本文件行尾为 LF + `.gitattributes`（内容零变化） |
+| `feat-fixes-20260922` | c34084c | 草稿续开 / 导入净化接线 / 缩放不再污染撤销栈 |
+| `refactor-composition-20260922` | 16148b1 | 装配根回到 `platforms/web`，import 边界真正生效 |
+
+- **行尾约定**：`.gitattributes` 声明 `* text=auto eol=lf`，文本文件一律 LF。
+  工具若写入 CRLF，`git diff` 会呈现"整文件重写"的失真 —— 提交前用
+  `git diff --ignore-cr-at-eol --numstat` 看真实改动量。
+- **度量入库**：`qa/report/` 只保留 `metrics-baseline.json` 与 `metrics-latest.json`，其余按 `.gitignore` 忽略。
+  基线必须进版本库，否则「hitRate/losslessRate 不得低于合入前基线」无从比对。
+- **禁止 `git rm -r`**：本环境该命令会删掉整个顶层目录树（已复现两次）。删文件只用
+  `rm -f <显式文件列表>`，再 `git add -u` 只 stage 已跟踪变更。
+- **删除测试/弱化门禁仍属违规**（铁律 5）。仓库有 git 之后，"改完必验"要求附
+  `vitest` 与 `playwright` 的实际输出，而不是描述性结论。

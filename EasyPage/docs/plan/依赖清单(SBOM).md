@@ -10,8 +10,8 @@
 
 | 包 | 版本 | 许可 | 用途 | 传递依赖数 |
 | --- | --- | --- | --- | --- |
-| idb | 8.0.3 | ISC | IndexedDB 草稿存储封装（契约 §2） | ≈0 |
-| parse5 | 7.3.0 | MIT | Node/qa 侧 HTML 规范化解析与 diff（契约 §2） | ≈1 |
+| idb | 8.0.3 | ISC | ~~IndexedDB 草稿存储封装（契约 §2）~~ **当前零使用（2026-09-22 核实）**：草稿实际由 `src/core/stores/draft.ts` 用 localStorage 实现，全仓库无 `from 'idb'`。建议下一卡评估移除或改用它实现 IndexedDB 草稿。 | ≈0 |
+| parse5 | 7.3.0 | MIT | ~~Node/qa 侧 HTML 规范化解析与 diff（契约 §2）~~ **当前零使用（2026-09-22 核实）**：度量改为真实浏览器操作级判定，`src/tests/qa/scripts` 均无 `parse5` 引用。建议下一卡评估移除。 | ≈1 |
 | ~~moveable~~ ~~0.53.0~~ ~~MIT~~ | **已移除（ADR-002）** | ~~拖拽/缩放选中框适配器（T105）~~。Stage 2 第 0 步因跨 realm 真实拖拽不可靠 + 体积过大（gzip ~91kb）整体卸载，交互全自研（`SelfInteractionAdapter`）。历史保留不删。 | ≈23（已随卸载移除） |
 
 ## 开发依赖（devDependencies）
