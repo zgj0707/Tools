@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>10 Flex/Grid 混合</title>
+<style>
+  .row{display:flex;gap:12px}
+  .col{flex:1 1 0;min-width:0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .abs{position:absolute;top:40px;left:200px}
+</style></head>
+<body>
+  <div class="row">
+    <div class="col"><h2>左栏</h2><p>flex 项</p></div>
+    <div class="col"><div class="grid"><span>A</span><span>B</span><span>C</span><span>D</span></div></div>
+  </div>
+  <div class="abs">绝对定位浮层</div>
+</body>
+</html>

@@ -1,0 +1,806 @@
+/* ============================================================================
+ * 易页 EasyPage · 外壳与控件样式（方案 C · Canvas First）
+ * ----------------------------------------------------------------------------
+ * 本文件是项目里唯一的 CSS。
+ *
+ * 【分工铁律】CSS 管「视觉」，JS 内联管「几何与行为」。
+ *   - 颜色 / 边框 / 圆角 / 阴影 / 字体 / 静态盒模型  → 本文件
+ *   - 坐标 / 尺寸 / display 切换 / transform（几何计算或状态驱动）→ JS 内联
+ *   理由：画布覆盖层的位置、手柄尺寸、拖拽位移都参与 e2e 几何断言，
+ *   把它们从 JS 搬进 CSS 会让「改样式」与「改行为」耦合，回归风险不可控。
+ *
+ * 【不可改动的选择器】（e2e 与 qa 度量依赖，改名即回归）
+ *   #ep-app #ep-canvas-frame #ep-preview-frame #ep-overlay-root
+ *   #ep-hover-box #ep-selected-box #ep-draft-row #ep-breadcrumb
+ *   .ep-toast .ep-layer-row .ep-layer-reorder .ep-context-menu
+ *   [data-dir]（8 个缩放手柄）  [data-align]（8 个对齐按钮）
+ * 布局层（T121）新增的稳定契约：
+ *   #ep-app[data-left|data-right]（open / closed）
+ *   .ep-topbar__toggle[data-panel]（left / right，含 aria-pressed）
+ *   .ep-import-overlay[data-open]   .ep-canvas-col
+ * ==========================================================================*/
+
+/* ============ 0. reset ============ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: var(--ep-font);
+  font-size: var(--ep-fs-13);
+  line-height: 1.5;
+  color: var(--ep-ink);
+  background: var(--ep-bg);
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ============ 1. 应用外壳 ============ */
+/* 注意：此处刻意不设 gap —— 各区块用自身 padding 控制间距，
+   以免改变左右面板与画布之间的横向尺寸（画布宽 = 100% 撑满剩余空间）。 */
+#ep-app {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 100%;
+  background: var(--ep-bg);
+}
+
+/* ---- 顶栏：一级动作平铺，无描边无底色，hover 才显形 ---- */
+.ep-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-3);
+  height: var(--ep-topbar-h);
+  padding: 0 var(--ep-sp-4);
+  background: var(--ep-surface);
+  border-bottom: 1px solid var(--ep-line);
+  position: relative;
+  z-index: 60;
+}
+.ep-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  flex: 0 0 auto;
+  /* 品牌与动作组之间拉一条极浅竖线，替代分组标题 */
+  padding-right: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+}
+.ep-topbar__name {
+  margin: 0;
+  font-size: var(--ep-fs-13);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ep-toolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+}
+
+/* ---- 面板开关组（C 版：左右面板默认收起，按需滑出）---- */
+.ep-topbar__panels {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+  padding-left: var(--ep-sp-3);
+  border-left: 1px solid var(--ep-line);
+}
+.ep-topbar__toggle {
+  border-color: var(--ep-line-2);
+}
+/* 激活态用 --ep-btn--active 的底色 + 主色文字，表示「该面板当前已展开」 */
+.ep-topbar__toggle.ep-btn--active {
+  border-color: var(--ep-accent);
+}
+
+/* ---- 对齐 / 分布条：贴着画布顶部的浮动词条（T121）----
+   刻意留在文档流内（不做 position:absolute）—— 绝对浮层会遮住画布顶部约 36px，
+   而 e2e 里大量断言直接点击画布元素，被遮挡即命中失败。
+   「浮动」感由胶囊造型 + 阴影 + 与画布等宽的左对齐营造。 */
+/* 对齐 / 分布浮条。
+   ⚠️ 必须 `flex-wrap: wrap` + `max-width: 100%`（T122 走查修复）。
+   原实现是 `flex: 0 0 auto` + 默认 `flex-wrap: nowrap`，宽度由 8 个按钮决定（实测 497px），
+   完全不受画布列约束。窄视口（如 1080px）双面板展开时画布列只有 408px ⇒ 右端 89px 溢出，
+   末位「垂直等距」按钮的中心点被右侧样式面板接管（elementFromPoint 命中样式面板，
+   不是按钮本身），**点了没反应且看不出来**。
+   走查的「同区域按钮重叠」检查查不到它 —— 那是跨区域遮挡，需要靠 elementFromPoint 判可达性。
+   现在超宽时自动换行，任何视口宽度下 8 个按钮都可达。 */
+.ep-alignbar {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+  gap: var(--ep-sp-1);
+  margin-bottom: var(--ep-sp-2);
+  padding: var(--ep-sp-1) var(--ep-sp-2);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-1);
+}
+.ep-alignbar::before {
+  content: '对齐';
+  flex: 0 0 auto;
+  margin: 0 var(--ep-sp-1) 0 var(--ep-sp-2);
+  font-size: var(--ep-fs-11);
+  color: var(--ep-ink-3);
+  letter-spacing: 0.04em;
+}
+
+/* ---- 导入浮层：C 版空状态引导（无文档时强制可见）----
+   覆盖顶栏以下的全部区域，z-index 低于顶栏（60），保证「粘贴 HTML / 新建空白」仍可点。 */
+.ep-import-overlay {
+  position: fixed;
+  inset: var(--ep-topbar-h) 0 0 0;
+  z-index: 50;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh var(--ep-sp-4) var(--ep-sp-4);
+  background: var(--ep-bg);
+  overflow: auto;
+}
+.ep-import-overlay[data-open='true'] {
+  display: flex;
+}
+.ep-import-card {
+  width: 100%;
+  max-width: 620px;
+  padding: var(--ep-sp-5);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-lg);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-2);
+}
+.ep-import__title {
+  margin: 0 0 var(--ep-sp-1);
+  font-size: var(--ep-fs-20);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ep-import__hint {
+  margin: 0 0 var(--ep-sp-4);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+.ep-import__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ep-sp-3);
+  margin-top: var(--ep-sp-3);
+}
+.ep-import__textarea {
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  padding: var(--ep-sp-3);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface-2);
+  font-size: var(--ep-fs-12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.ep-import__textarea::placeholder {
+  color: var(--ep-ink-3);
+}
+.ep-import__textarea:focus {
+  outline: none;
+  border-color: var(--ep-accent);
+  box-shadow: 0 0 0 3px var(--ep-accent-soft);
+}
+/* 原生 file 控件：视觉隐藏，由「选择文件」按钮代理触发（T122 走查修复）。
+   原因：Chromium 把它渲染成英文「Choose File / No file chosen」，文案不可本地化，
+   ::file-selector-button 也只能改按钮而改不掉旁边的英文提示文本。
+   保留在 DOM 且不设 display:none —— 用 1px + opacity:0，既不可见，
+   又不会让 setInputFiles() 这类直接操作 DOM 的路径失效。 */
+.ep-import__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- 草稿区：导入浮层内的「继续上次编辑」入口 ---- */
+.ep-draft-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  margin-bottom: var(--ep-sp-3);
+  padding: var(--ep-sp-2) var(--ep-sp-3);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface-2);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+/* 四段分工（T122 走查修复）：标签固定、文件名可截断、时间戳弱化、操作靠右。
+   原实现是「最近草稿：<文件名> <时间戳> 继续 删除」一整行拼接，四者同权重。 */
+.ep-draft__label {
+  flex: 0 0 auto;
+  color: var(--ep-ink-3);
+}
+.ep-draft__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ep-ink);
+}
+.ep-draft__time {
+  flex: 0 0 auto;
+  color: var(--ep-ink-3);
+  font-size: var(--ep-fs-11);
+}
+.ep-draft__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+  margin-left: auto;
+}
+
+/* ---- 主区：左面板 + 画布列 + 右面板（gap 恒为 0，宽度由面板自身 border 分隔）---- */
+.ep-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  padding: var(--ep-sp-3) var(--ep-sp-4) 0;
+  min-width: 0;
+}
+
+/* ---- 面包屑：画布底部的浮动胶囊（T121）----
+   与对齐条同理留在文档流内，避免绝对浮层遮住画布底部元素、打垮点击类断言。
+   无选中时 :empty 命中 → 整颗胶囊消失，不留空壳。 */
+.ep-statusbar {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: var(--ep-sp-2);
+  padding: var(--ep-sp-1) var(--ep-sp-3);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-1);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ep-statusbar:empty {
+  display: none;
+}
+
+/* ---- toast：底部居中深色胶囊 ---- */
+.ep-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--ep-sp-5);
+  /* ⚠️ 居中靠内联/这里的 translateX(-50%)；显隐靠 data-open，两个状态都必须带该位移。
+     默认隐藏是必须的：空 textContent 的 div 仍有 padding，首屏会在底部中央
+     渲染出一个空的深色药丸（T122 走查截图为证）。 */
+  transform: translateX(-50%) translateY(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease, transform 160ms ease;
+  z-index: 9999;
+  max-width: 60%;
+  padding: var(--ep-sp-2) var(--ep-sp-4);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-toast-bg);
+  color: var(--ep-toast-ink);
+  font-size: var(--ep-fs-12);
+  box-shadow: var(--ep-sh-2);
+  pointer-events: none;
+}
+.ep-toast[data-open='true'] {
+  transform: translateX(-50%);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============ 2. 通用控件 ============ */
+.ep-btn {
+  flex: 0 0 auto;
+  height: var(--ep-control-h);
+  padding: 0 var(--ep-sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--ep-r-sm);
+  background: transparent;
+  color: var(--ep-ink-2);
+  font-size: var(--ep-fs-12);
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ep-btn:hover:not([disabled]) {
+  background: var(--ep-surface-3);
+  color: var(--ep-ink);
+}
+.ep-btn:active:not([disabled]) {
+  background: var(--ep-line);
+}
+.ep-btn:focus-visible {
+  outline: 2px solid var(--ep-accent);
+  outline-offset: 1px;
+}
+.ep-btn[disabled] {
+  color: var(--ep-ink-3);
+  cursor: not-allowed;
+}
+/* 全宽块级（插入面板 / 样式面板内的动作按钮） */
+.ep-btn--block {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+/* 插入面板：动作按钮纵向堆叠；「删除选中」与上方插入组拉开一档 */
+.ep-elements .ep-btn--block {
+  margin-bottom: var(--ep-sp-1);
+}
+.ep-elements .ep-btn--danger {
+  margin-top: var(--ep-sp-2);
+}
+/* 激活 / 当前生效 */
+.ep-btn--active {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+/* 主行动按钮（导入浮层的「导入 HTML」提交） */
+.ep-btn--primary {
+  border-color: var(--ep-accent);
+  background: var(--ep-accent);
+  color: #fff;
+}
+.ep-btn--primary:hover:not([disabled]) {
+  background: #2358d8;
+  color: #fff;
+}
+.ep-btn--danger:hover:not([disabled]) {
+  color: var(--ep-danger);
+  background: var(--ep-surface-3);
+}
+
+/* ---- 样式面板字段行：(label 72px + 控件 flex:1) ---- */
+.ep-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  margin-bottom: var(--ep-sp-2);
+}
+.ep-field > label {
+  flex: 0 0 72px;
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+.ep-field > input,
+.ep-field > select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--ep-control-h);
+  padding: 0 var(--ep-sp-2);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-sm);
+  background: var(--ep-surface);
+  font-size: var(--ep-fs-12);
+}
+.ep-field > input:focus,
+.ep-field > select:focus {
+  outline: none;
+  border-color: var(--ep-accent);
+  box-shadow: 0 0 0 3px var(--ep-accent-soft);
+}
+.ep-field > input[type='color'] {
+  padding: 2px;
+  cursor: pointer;
+}
+/* 颜色控件无法表达空值：无共有值 / 未选中时降级显示，避免沿用旧色冒充当前值（T122） */
+.ep-field[data-unset='true'] > input[type='color'] {
+  opacity: 0.3;
+}
+.ep-field > button {
+  flex: 1 1 auto;
+  height: var(--ep-control-h);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-sm);
+  background: var(--ep-surface);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink);
+}
+.ep-field > button:hover:not([disabled]) {
+  background: var(--ep-surface-3);
+}
+.ep-field > button[disabled] {
+  color: var(--ep-ink-3);
+  cursor: not-allowed;
+}
+
+/* ---- 面板标题 ---- */
+.ep-elements > h3,
+.ep-layers > h3,
+.ep-panel > h3 {
+  margin: 0 0 var(--ep-sp-2);
+  font-size: var(--ep-fs-11);
+  font-weight: 600;
+  color: var(--ep-ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ============ 2.5 面板收放（C 版核心）============
+   默认收起：由 #ep-app 的 data-left / data-right 驱动。
+   收起用 display:none 而非 transform —— 前者让「不可见」是确定性的（元素不进布局、
+   也不进可访问性树），后者会让元素仍可命中，e2e 里表现为「点了看不见的按钮」。
+   展开时给一段极短的滑入动画，做出「按需滑出」的观感。 */
+#ep-app[data-left='closed'] .ep-elements,
+#ep-app[data-left='closed'] .ep-layers,
+#ep-app[data-right='closed'] .ep-panel {
+  display: none;
+}
+@keyframes ep-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ep-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+#ep-app[data-left='open'] .ep-elements,
+#ep-app[data-left='open'] .ep-layers {
+  animation: ep-slide-in-left 0.14s ease-out;
+}
+#ep-app[data-right='open'] .ep-panel {
+  animation: ep-slide-in-right 0.14s ease-out;
+}
+
+/* ============ 3. 左侧「插入」面板 ============ */
+.ep-elements {
+  flex: 0 0 auto;
+  width: 160px;
+  padding: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+}
+
+/* ============ 4. 左侧「图层」面板 ============ */
+/* width 200 → 260（T122 走查修复）。
+   每行要塞进：折叠三角 12px + 6 个行内按钮 98px + 7 道 gap，
+   200px 面板扣掉 padding 后只剩约 30px 给节点名 —— 实测标签被压到
+   `nav…` / `head…` / `di…` 三四个字符，图层树的「看清结构」价值全部丧失。
+   加宽到 260px 后节点名可得约 90px，足以显示 `header.hero` / `section.features`。
+   ⚠️ max-height:600px 是性能红线（layers.spec 断言「15000 节点首屏行数有界」），
+   不得为了与其他面板对齐而改大。 */
+.ep-layers {
+  flex: 0 0 auto;
+  width: 260px;
+  max-height: 600px;
+  padding: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+  overflow: auto;
+}
+.ep-layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ep-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: var(--ep-r-xs);
+  font-size: var(--ep-fs-12);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ep-layer-row:hover {
+  background: var(--ep-surface-3);
+}
+/* 选中行（原实现为内联 #dbeafe，现统一到 --ep-focus-bg） */
+.ep-layer-row--selected,
+.ep-layer-row--selected:hover {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+.ep-layer-toggle {
+  flex: 0 0 12px;
+  width: 12px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ep-ink-3);
+}
+.ep-layer-row > span:not(.ep-layer-toggle) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 行内小按钮三兄弟：排序 / 锁定 / 显隐
+   ⚠️ 它们的标签与 data-dir 被 e2e 依赖（layers.spec.ts 用
+   button[data-dir="-1"]、button hasText '👁'/'🔓' 定位），标签名与 dataset 不得改动。
+   .ep-layer-hide 是本次新增的类名（原先无类名、纯内联），新增不破坏既有选择器。 */
+.ep-layer-reorder,
+.ep-layer-lock,
+.ep-layer-hide {
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: var(--ep-r-xs);
+  line-height: 1;
+  color: var(--ep-ink-3);
+}
+.ep-layer-reorder,
+.ep-layer-lock {
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+}
+.ep-layer-hide {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+.ep-layer-reorder:hover:not([disabled]),
+.ep-layer-lock:hover,
+.ep-layer-hide:hover {
+  background: var(--ep-line);
+  color: var(--ep-ink);
+}
+.ep-layer-reorder[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.ep-layer-more {
+  /* 左缩进比行再深一档，视觉上归属父行 */
+  padding: 2px 4px 2px 24px;
+  font-size: var(--ep-fs-11);
+  color: var(--ep-ink-3);
+  cursor: pointer;
+}
+.ep-layer-more:hover {
+  color: var(--ep-accent);
+}
+
+/* ============ 5. 右侧「样式」面板 ============ */
+/* 必须自带滚动容器（T122 走查修复）。
+   样式面板内容（文本 + 盒模型 11 项 + 外观）自然高约 1260px，远超 900px 视口。
+   原先没有 max-height / overflow，面板把整页撑到 1321px：想看底部「外观」区，
+   得把顶栏和画布一起滚走，而且三列高度严重失衡（插入 469 / 图层 439 / 样式 1261）。
+   现在把高度上限钉到「视口 - 顶栏 - 主区上留白」，超出部分面板内部滚动。 */
+.ep-panel {
+  flex: 0 0 auto;
+  width: 220px;
+  max-height: calc(100vh - var(--ep-topbar-h) - var(--ep-sp-3));
+  overflow-y: auto;
+  padding: var(--ep-sp-3);
+  border-left: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+}
+.ep-box,
+.ep-deco {
+  margin-top: var(--ep-sp-3);
+  padding-top: var(--ep-sp-2);
+  border-top: 1px solid var(--ep-line);
+}
+/* ⚠️ 这个类的 display 被 CSS 钉死为 none，JS 显形时必须显式赋 'block'。
+   不可写 `style.display = ''` —— 清空内联后会回落到这里的 none，提示将永不显形。
+   （StylePanel 的 showNotice 已按此约定实现，2026-09-22 排查确认。） */
+.ep-notice {
+  margin: var(--ep-sp-1) 0;
+  padding: var(--ep-sp-1) var(--ep-sp-2);
+  border-radius: var(--ep-r-xs);
+  background: rgba(217, 58, 43, 0.08);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-danger);
+  display: none;
+}
+/* 中性提示（空态说明）与红色守卫提示区分开（T122） */
+.ep-notice[data-kind='info'] {
+  background: var(--ep-surface-3);
+  color: var(--ep-ink-2);
+}
+/* 样式面板里的分组小标题（BoxModelSection / DecorationSection） */
+.ep-box > h4,
+.ep-deco > h4 {
+  margin: var(--ep-sp-2) 0 var(--ep-sp-1);
+  font-size: var(--ep-fs-12);
+  font-weight: 600;
+  color: var(--ep-ink-2);
+}
+
+/* ============ 6. 画布与预览 ============ */
+/* 画布宿主链撑满剩余空间 —— 这是「画布优先」成立的前提。
+   原实现 mainRow 与 canvasHostEl 都没有 flex 增长，宽度双双由内容决定，
+   于是 iframe 回落到固有宽度 300px：1440px 窗口里画布只有 302px（占屏 21%）。
+   基线实测 304px，属既存缺陷，与本轮视觉改造无关。
+   画布自身的 width:100% / height:600px 仍是几何红线，留在 JS 内联。 */
+.ep-canvas-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+/* 画布列：对齐条 → 画布 → 面包屑胶囊 纵向排布（T121） */
+.ep-canvas-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.ep-canvas-host {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative; /* 与 CanvasHost 构造里的内联重复声明，作兜底 */
+}
+#ep-canvas-frame {
+  display: block;
+  width: 100%;
+  height: 600px;
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-paper);
+  background: var(--ep-surface);
+}
+.ep-preview-host {
+  flex: 0 0 auto;
+  padding: 0 var(--ep-sp-4) var(--ep-sp-3);
+}
+#ep-preview-frame {
+  display: block;
+  width: 100%;
+  height: 600px;
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-paper);
+  background: var(--ep-surface);
+}
+
+/* ============ 7. 画布覆盖层 ============ */
+/* 本区块只声明「长什么样」。所有 position / inset / display / z-index /
+   width / height 一律由 JS 内联控制 —— 它们是几何计算的结果，也是 e2e 的断言对象。
+   刻意不在 CSS 重复声明：内联优先级更高，写了也会被覆盖，
+   属于「改了 CSS 却不生效」的双源陷阱。 */
+#ep-hover-box {
+  border: 2px solid var(--ep-accent-line);
+  background: var(--ep-accent-soft);
+}
+/* 大容器（框面积 > 画布 1/4）只描边不填充。数据的判定在 geom.hoverFillAllowed，
+   此处只负责表现 —— 与 data-open / data-danger 同一套「状态挂 data-*」的写法。 */
+#ep-hover-box[data-fill='false'] {
+  background: none;
+}
+#ep-selected-box {
+  border: 2px solid var(--ep-selected);
+}
+.ep-selected-box-multi {
+  border: 2px solid var(--ep-selected);
+  opacity: 0.7;
+}
+/* 8 个缩放手柄：尺寸由 JS 的 HANDLE_SIZE 常量决定，此处只给配色。
+   白描边是辨识度保障 —— 蓝底手柄压在蓝色元素上时不至于糊成一片。 */
+#ep-overlay-root [data-dir] {
+  background: var(--ep-handle);
+  border: 1px solid var(--ep-handle-ring);
+}
+.ep-lock-badge {
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-xs);
+  background: var(--ep-surface);
+  text-align: center;
+}
+.ep-marquee {
+  border: 1px solid var(--ep-accent);
+  background: rgba(47, 107, 255, 0.1);
+}
+
+/* ============ 8. 浮层 ============ */
+.ep-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  padding: var(--ep-sp-1) 0;
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-3);
+}
+.ep-menu-item {
+  padding: var(--ep-sp-2) var(--ep-sp-3);
+  font-size: var(--ep-fs-13);
+  color: var(--ep-ink);
+  cursor: pointer;
+}
+.ep-menu-item:hover {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+.ep-menu-item[data-disabled='true'] {
+  color: var(--ep-ink-3);
+  cursor: default;
+}
+.ep-menu-item[data-disabled='true']:hover {
+  background: transparent;
+  color: var(--ep-ink-3);
+}
+/* 破坏性操作单独分组并配色（T122：删除原排在第一项） */
+.ep-menu-sep {
+  height: 1px;
+  margin: var(--ep-sp-1) 0;
+  background: var(--ep-line);
+}
+.ep-menu-item[data-danger='true'] {
+  color: var(--ep-danger);
+}
+.ep-menu-item[data-danger='true']:hover {
+  background: rgba(217, 58, 43, 0.08);
+  color: var(--ep-danger);
+}
+.ep-menu-item[data-danger='true'][data-disabled='true'],
+.ep-menu-item[data-danger='true'][data-disabled='true']:hover {
+  background: transparent;
+  color: var(--ep-ink-3);
+}
+/* 定位（fixed + 右上角偏移）与显隐状态由 JS 内联控制（LinkPopover 构造），
+   刻意不在 CSS 声明 position —— 避免「CSS 说 absolute、JS 实际 fixed」的双源误导。 */
+.ep-link-popover {
+  z-index: 9999;
+  padding: var(--ep-sp-3);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-3);
+}
+.ep-image-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 31, 30, 0.35);
+}
