@@ -3,7 +3,14 @@
 
 import { t } from './i18n/zh-CN';
 import { saveDraft, loadDraft, clearDraft } from '../core/stores/draft';
-import type { EditorSession, HtmlIO, SessionMeta } from '../core/ports';
+import type {
+  AppPlatform,
+  EditorSession,
+  HtmlIO,
+  InteractionAdapter,
+  PreviewSandbox,
+  SessionMeta,
+} from '../core/ports';
 import { EditorError } from '../core/EditorError';
 import { EditorSessionModel } from '../core/model/EditorSession';
 import { SetTextCommand, ResizeCommand } from '../core/commands/commands';
@@ -16,9 +23,6 @@ import { computeResize, type ResizeDirection } from '../core/interaction/resize'
 import { sanitizeImport } from '../core/io/sanitizeImport';
 import { auditResources } from '../core/serialize/resourceAudit';
 import { frameToOverlay, rectOf, rectsIntersect } from './canvas/geom';
-import { DomParserIO } from '../adapters/dom/DomParserIO';
-import { IFramePreviewSandbox } from '../adapters/preview/IFramePreviewSandbox';
-import { SelfInteractionAdapter } from '../adapters/interaction/SelfInteractionAdapter';
 import { CanvasHost } from './canvas/CanvasHost';
 import { InlineTextEditor } from './canvas/InlineTextEditor';
 import { OverlayLayer } from './canvas/OverlayLayer';
@@ -42,14 +46,15 @@ import { LinkPopover } from './panels/ribbon/LinkPopover';
 
 export class App {
   private readonly root: HTMLElement;
+  private readonly platform: AppPlatform;
   private readonly io: HtmlIO;
   private canvas!: CanvasHost;
-  private preview!: IFramePreviewSandbox;
+  private preview!: PreviewSandbox;
   private overlay!: OverlayLayer;
   private breadcrumb!: Breadcrumb;
   private inlineEditor!: InlineTextEditor;
   private session!: EditorSession;
-  private interaction!: SelfInteractionAdapter;
+  private interaction!: InteractionAdapter;
   private stylePanel!: StylePanel;
   private formatPainter!: FormatPainter;
   private elementsPanel!: ElementsPanel;
@@ -69,9 +74,14 @@ export class App {
   private previewHostEl!: HTMLDivElement;
   private statusbarEl!: HTMLDivElement;
 
-  constructor(root: HTMLElement, deps: { io: HtmlIO }) {
+  /**
+   * @param platform 平台装配（由 platforms/** 提供）。app 层只依赖 core 端口类型，
+   *                 不直接 import 任何适配器实现 —— 见契约 §4 与 .eslintrc.cjs 的 import 边界。
+   */
+  constructor(root: HTMLElement, platform: AppPlatform) {
     this.root = root;
-    this.io = deps.io;
+    this.platform = platform;
+    this.io = platform.createIO();
   }
 
   mount(): void {
@@ -199,7 +209,7 @@ export class App {
     this.linkPopover = new LinkPopover(this.root);
     this.root.addEventListener('contextmenu', (e) => { e.preventDefault(); this.showMenu(e.clientX, e.clientY); });
     // 拖拽微移适配器：只在 committed 时 push 一个 MoveCommand
-    this.interaction = new SelfInteractionAdapter(this.canvas.overlay, this.canvas.frame);
+    this.interaction = this.platform.createInteraction(this.canvas.overlay, this.canvas.frame);
     this.interaction.isLocked = (el) => this.lock.isLocked(el);
     this.interaction.onDragMove(({ dx, dy, committed }) => {
       // 端口语义（ports.ts DragMoveEvent）：committed=true 才代表「一次拖拽的提交」。
@@ -218,7 +228,7 @@ export class App {
     // 预览区
     this.previewHostEl = document.createElement('div');
     this.root.appendChild(this.previewHostEl);
-    this.preview = new IFramePreviewSandbox(this.previewHostEl);
+    this.preview = this.platform.createPreview(this.previewHostEl);
 
     // 面包屑状态栏
     this.statusbarEl = document.createElement('div');
@@ -907,11 +917,4 @@ export class App {
     }
     this.toast('toast.exportFailed');
   }
-}
-
-/** 装配根（composition root）：构造适配器并注入 App。 */
-export function createApp(root: HTMLElement): App {
-  const app = new App(root, { io: new DomParserIO() });
-  app.mount();
-  return app;
 }

@@ -165,6 +165,12 @@ export interface ResizeEvent {
 export interface InteractionAdapter {
   attach(els: Element[]): void; // 在覆盖层为这些元素渲染选中框/手柄并接管指针
   detach(): void;
+  /**
+   * 锁定谓词：返回 true 的元素不启动拖拽/缩放（由 app 层注入，适配器不自持锁定状态）。
+   * 2026-09-22 补：此前只有 SelfInteractionAdapter 实现里有这个成员，端口未声明，
+   * 迫使 app 必须依赖具体类才能装配锁定能力。
+   */
+  isLocked: (el: Element) => boolean;
   onDragMove(cb: (e: DragMoveEvent) => void): void; // 临时移动走预览态，committed 时发 MoveCommand
   onResize(cb: (e: ResizeEvent) => void): void;
   showGuides(g: Guide[]): void; // 对齐吸附线/等距由 core 计算，适配器只负责画
@@ -199,3 +205,12 @@ export interface PreviewSandbox {
 //                 避免"仅 Chromium 可用"的能力差异；需要覆写保存时再抽端口并实现）
 //   · 粘贴净化  → core/io/sanitizeImport.ts 纯函数（导入路径统一调用）
 // 原则：契约描述当下交付，不描述愿望。出现第二个实现时再抽端口。
+
+// ── 平台装配（composition root 契约）────────────────────────
+// app 层不 new 任何具体适配器；由 platforms/** 提供工厂，把平台差异挡在装配层。
+// 收益：换实现（换解析器 / 换交互库 / 换宿主）只改 platforms/**，不动 app/ 与 core/。
+export interface AppPlatform {
+  createIO(): HtmlIO;
+  createPreview(host: HTMLElement): PreviewSandbox;
+  createInteraction(container: HTMLElement, frame: HTMLElement | null): InteractionAdapter;
+}

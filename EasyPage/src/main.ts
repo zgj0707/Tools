@@ -1,5 +1,5 @@
 import { EP } from './constants';
-import { createApp } from './app/App';
+import { createApp } from './platforms/web/composition';
 import { t } from './app/i18n/zh-CN';
 
 const root = document.getElementById(EP.APP_ROOT);
