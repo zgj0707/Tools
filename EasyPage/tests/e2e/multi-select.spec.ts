@@ -38,14 +38,38 @@ test('多选：Shift 点选 toggle；水平等距分布；一次撤销归位', a
   expect(restored).toBe(before);
 });
 
-test('<2 元素时对齐提示且 transform 不变', async ({ page }) => {
+test('<2 元素时对齐按钮禁用且 transform 不变', async ({ page }) => {
   await page.goto('/');
   await page.locator('textarea').fill(fixture);
   await page.getByRole('button', { name: '导入 HTML' }).click();
   const editFrame = page.frameLocator('#ep-canvas-frame');
 
+  // T122 起对齐按钮按选中数禁用。原行为是「按钮呈可用外观，点了才弹 toast
+  //『对齐需要至少 2 个元素』」—— 既误导，又与图层面板 ↑↓ 用 disabled 表达同类前提的
+  // 做法不一致。断言口径随之从「点了不产生副作用」改为「根本不可点」。
+  const alignLeft = page.getByRole('button', { name: '左' });
+  const distH = page.getByRole('button', { name: '水平等距' });
+
   const t = await editFrame.locator('#c1').evaluate((el) => (el as HTMLElement).style.transform);
-  await page.getByRole('button', { name: '水平等距' }).click();
+
+  // 无选中 → 全部禁用
+  await expect(alignLeft).toBeDisabled();
+  await expect(distH).toBeDisabled();
+
+  // 单选 1 个 → 仍禁用（对齐需 ≥2）
+  await editFrame.locator('#c1').click();
+  await expect(alignLeft).toBeDisabled();
+
+  // 选中 2 个 → 对齐类放开，分布类仍禁用（需 ≥3）
+  await editFrame.locator('#c2').click({ modifiers: ['Shift'] });
+  await expect(alignLeft).toBeEnabled();
+  await expect(distH).toBeDisabled();
+
+  // 选中 3 个 → 分布类放开
+  await editFrame.locator('#c3').click({ modifiers: ['Shift'] });
+  await expect(distH).toBeEnabled();
+
+  // 全程未产生任何位移
   const t2 = await editFrame.locator('#c1').evaluate((el) => (el as HTMLElement).style.transform);
   expect(t2).toBe(t);
 });

@@ -80,7 +80,10 @@ export class StylePanel {
     if (!session || els.length === 0) {
       this.setAllDisabled(true);
       this.linkUrl.setDisabled(true);
-      this.showNotice('');
+      // T122：原先只置灰、不清值 —— 面板会沿用上一个选中元素的数值冒充当前状态。
+      //       现在清空全部显示值并给出空态说明。
+      this.clearAll();
+      this.showNotice(t('panel.style.empty'), 'info');
       return;
     }
     // 能力守卫：任一非 full 即禁用整组并提示，不回填。
@@ -93,6 +96,8 @@ export class StylePanel {
     }
     this.showNotice('');
     this.setAllDisabled(false);
+    // 回到「有选中」上下文：空选项恢复为「混合」语义
+    this.setEmptyTexts(t('panel.style.mixed'));
 
     const css = els.map((el) => (el.ownerDocument.defaultView ?? window).getComputedStyle(el));
     this.fontFamily.setValue(commonValue(css.map((c) => c.fontFamily)) ?? '');
@@ -135,15 +140,38 @@ export class StylePanel {
     session.markDirty();
   }
 
-  private showNotice(msg: string): void {
+  private showNotice(msg: string, kind: 'danger' | 'info' = 'danger'): void {
     if (msg) {
       // .ep-notice 默认 display:none（见 app.css），显形须显式切 block
       this.notice.style.display = 'block';
+      this.notice.dataset.kind = kind;
       this.notice.textContent = msg;
     } else {
       this.notice.style.display = 'none';
       this.notice.textContent = '';
     }
+  }
+
+  private setEmptyTexts(text: string): void {
+    this.fontFamily.setEmptyText(text);
+    this.fontWeight.setEmptyText(text);
+    this.align.setEmptyText(text);
+  }
+
+  /** 未选中态：清空所有显示值，避免任何字段残留上一次选中的值。 */
+  private clearAll(): void {
+    this.setEmptyTexts(t('panel.style.unset'));
+    this.fontFamily.setValue('');
+    this.fontSize.setValue('');
+    this.fontWeight.setValue('');
+    this.color.setValue('');
+    this.bgColor.setValue('');
+    this.align.setValue('');
+    this.lineHeight.setValue('');
+    this.letterSpacing.setValue('');
+    this.linkUrl.setValue('');
+    this.box.clear();
+    this.deco.clear();
   }
 
   /** 提交规约：快照初始内联 → 写内联预览 → diff → 一条 SetStyleCommand，无变化不入栈。 */

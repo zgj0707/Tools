@@ -5,6 +5,10 @@ export interface ContextMenuItem {
   id: string;
   label: string;
   enabled: boolean;
+  /** 危险操作（删除类）：排在末尾、单列一组、配 danger 色。 */
+  danger?: boolean;
+  /** 在这一项之前插入分组分隔线。 */
+  separatorBefore?: boolean;
 }
 
 export interface ContextMenuHooks {
@@ -27,12 +31,18 @@ export class ContextMenu {
     // app.css 的 .ep-context-menu 承担，此处只保留 left/top 这两个坐标计算值。
     el.className = 'ep-context-menu';
     for (const item of items) {
+      if (item.separatorBefore) {
+        const sep = document.createElement('div');
+        sep.className = 'ep-menu-sep';
+        el.appendChild(sep);
+      }
       const row = document.createElement('div');
       row.className = 'ep-menu-item';
       row.textContent = item.label;
       // 视觉（内边距 / 字号 / 配色 / 光标）由 .ep-menu-item 与
       // .ep-menu-item[data-disabled='true'] 承担，这里只标注启用态供 CSS 选择。
       row.dataset.disabled = item.enabled ? 'false' : 'true';
+      row.dataset.danger = item.danger ? 'true' : 'false';
       if (item.enabled) {
         row.addEventListener('click', () => {
           hooks.onPick(item.id);

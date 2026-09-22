@@ -23,3 +23,7 @@ export const PERF = {
   POINTER_USE_RAAF: true, // 高频指针计算一律 requestAnimationFrame
   LARGE_PAGE_NODES: 15000, // 超过则提示并允许只读降级（PoC 校准）
 } as const;
+
+export const UI = {
+  TOAST_VISIBLE_MS: 2600, // 提示条自动收起时长（T122：原为永不隐藏）
+} as const;

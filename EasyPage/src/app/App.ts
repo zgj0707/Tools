@@ -16,7 +16,7 @@ import { EditorSessionModel } from '../core/model/EditorSession';
 import { SetTextCommand, ResizeCommand } from '../core/commands/commands';
 import { InlineWrapCommand } from '../core/commands/inlineCommands';
 import { checkSelection, findEnclosingWrap } from '../core/inline/wrapInline';
-import { INTERACTION } from '../constants';
+import { INTERACTION, UI } from '../constants';
 import { isResizable } from '../core/interaction/resizeGuard';
 import { clearTranslate } from '../core/interaction/transform';
 import { computeResize, type ResizeDirection } from '../core/interaction/resize';
@@ -69,8 +69,12 @@ export class App {
 
   private textarea!: HTMLTextAreaElement;
   private fileInput!: HTMLInputElement;
+  /** 对齐/分布按钮。T122：按选中数禁用，避免「看起来可用、点了才说不够」的误导。 */
+  private alignButtons: HTMLButtonElement[] = [];
   private draftRow!: HTMLDivElement;
   private toastEl!: HTMLDivElement;
+  /** 提示条自动收起计时器（T122）。 */
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private canvasHostEl!: HTMLDivElement;
   private previewHostEl!: HTMLDivElement;
   private statusbarEl!: HTMLDivElement;
@@ -144,6 +148,7 @@ export class App {
     const mkAlign = (label: string, type: AlignType) => {
       const b = this.makeButton(label, () => this.doAlign(type));
       b.dataset.align = type;
+      this.alignButtons.push(b);
       return b;
     };
     alignRow.append(
@@ -195,7 +200,13 @@ export class App {
     // 顶栏再放一个同名按钮会命中 2 个元素。
     const importBtn = this.makeButton(t('button.import'), () => this.importFromTextarea());
     importBtn.classList.add('ep-btn--primary');
-    importActions.append(this.fileInput, importBtn);
+    // 原生 file 控件在 Chromium 下渲染成英文「Choose File / No file chosen」，
+    // 文案无法本地化、样式也无法完全接管（T122 走查发现）。改为视觉隐藏原生控件，
+    // 用自定义「选择文件」按钮代理触发 —— i18n 里的 button.chooseFile 至此才真正被使用。
+    // ⚠️ 控件必须留在 DOM 中：e2e 用 locator('input[type=file]').setInputFiles() 直接喂文件，
+    //    该 API 不要求元素可见。
+    const chooseBtn = this.makeButton(t('button.chooseFile'), () => this.fileInput.click());
+    importActions.append(chooseBtn, this.fileInput, importBtn);
     importCard.appendChild(importActions);
 
     this.importOverlay.appendChild(importCard);
@@ -297,10 +308,31 @@ export class App {
     // 布局初值：面板开合来自持久化状态；无文档 ⇒ 导入浮层可见
     this.applyLayout();
     this.syncImportOverlay();
+    // 无文档时先禁用对齐按钮，与「选中数不足即禁用」保持同一口径
+    this.setAlignButtonsEnabled(0);
   }
 
   // ── 布局状态（T121）────────────────────────────────────────
   /** 把 layout 状态同步到 DOM：#ep-app 的 data-left / data-right 驱动 CSS 收放。 */
+  /**
+   * 按当前选中数更新对齐/分布按钮的可用性（T122 走查修复）。
+   *
+   * 原行为：8 个按钮在任何选中状态下都呈可用外观，点了才弹「对齐需要至少 2 个元素」。
+   * 走查中发现这与图层面板（↑↓ 按钮用 disabled 表达同一类前提）**两套处理方式**，
+   * 属一致性问题，也属误导（按钮看起来能点）。
+   *
+   * 阈值：对齐类需 2 个元素，分布类需 3 个 —— 所以 2 个选中时分布类仍禁用，
+   * 比单纯「全部可用/全部禁用」更精确。
+   * 跨父元素的情况无法用 disabled 表达（要比较父节点），仍保留 doAlign 里的 toast 分支。
+   */
+  private setAlignButtonsEnabled(count: number): void {
+    for (const b of this.alignButtons) {
+      const type = b.dataset.align;
+      const need = type === 'hdistribute' || type === 'vdistribute' ? 3 : 2;
+      b.disabled = count < need;
+    }
+  }
+
   private applyLayout(): void {
     this.root.dataset.left = this.layout.left ? 'open' : 'closed';
     this.root.dataset.right = this.layout.right ? 'open' : 'closed';
@@ -419,6 +451,7 @@ export class App {
     this.session.selection.onChange(() => {
       this.layoutOverlay();
       const els = this.session?.selection.elements ?? [];
+      this.setAlignButtonsEnabled(els.length);
       if (els.length === 1 && els[0]) { this.refreshListButtons(els[0]); this.refreshLayers(); }
       else { this.elementsPanel.setListButtons(false, false, ''); this.refreshLayers(); }
     });
@@ -490,11 +523,12 @@ export class App {
     const els = session.selection.elements;
     const single = els.length === 1 ? els[0]! : null;
     const locked = single ? this.lock.isLocked(single) : false;
+    // T122：破坏性操作（删除）原先排在第一项，误点概率最高。现改为末位 + 分组 + danger 色。
     const items = [
-      { id: 'delete', label: t('menu.delete'), enabled: els.length > 0 && !locked },
       { id: 'duplicate', label: t('menu.duplicate'), enabled: !!single && !locked },
       { id: 'reset', label: t('menu.reset'), enabled: !!single && !locked },
       { id: 'toggleLock', label: locked ? t('menu.unlock') : t('menu.lock'), enabled: !!single },
+      { id: 'delete', label: t('menu.delete'), enabled: els.length > 0 && !locked, danger: true, separatorBefore: true },
     ];
     this.menu.show(x, y, items, { onPick: (id) => {
       if (id === 'delete') this.deleteSelected();
@@ -955,13 +989,33 @@ export class App {
       this.draftRow.textContent = t('draft.none');
       return;
     }
-    const span = document.createElement('span');
-    span.textContent = `${t('draft.recentPrefix')}${rec.title} ${new Date(rec.updatedAt).toLocaleString()}`;
+    // 拆成「标签 / 文件名 / 时间戳 / 操作」四段（T122 走查修复）。
+    // 原实现把「最近草稿：<文件名> <完整时间戳> 继续 删除」拼成一整行文本：
+    // 时间戳与文件名同权重、按钮紧跟其后，读起来是一坨，且文件名一长就整体换行。
+    // 现在文件名可截断、时间戳降级弱化、操作区靠右对齐。
+    // ⚠️「无草稿」分支仍是单一 textContent，startpage.spec 用 toHaveText('无草稿') 断言它，未受影响。
+    const label = document.createElement('span');
+    label.className = 'ep-draft__label';
+    label.textContent = t('draft.recentPrefix');
+
+    const name = document.createElement('span');
+    name.className = 'ep-draft__name';
+    name.textContent = rec.title;
+    name.title = rec.title;
+
+    const time = document.createElement('span');
+    time.className = 'ep-draft__time';
+    time.textContent = new Date(rec.updatedAt).toLocaleString();
+
+    const actions = document.createElement('div');
+    actions.className = 'ep-draft__actions';
     const resume = this.makeButton(t('button.resume'), () => {
       void this.importSource(rec.html, 'draft', rec.title).catch((err) => this.handleError(err));
     });
     const del = this.makeButton(t('button.delete'), () => { clearDraft(); this.refreshDraftList(); });
-    this.draftRow.append(span, resume, del);
+    actions.append(resume, del);
+
+    this.draftRow.append(label, name, time, actions);
   }
 
   private loadBlank(): void {
@@ -1014,8 +1068,20 @@ export class App {
   }
 
   // ── toast / 错误 ─────────────────────────────────────────
+  /**
+   * 提示条。T122：原实现只写 textContent、从不隐藏，导致
+   * ① 首屏就有一个空的深色药丸悬在底部中央（空 div 的 padding 仍占位）；
+   * ② 一旦提示过就永久驻留，后续提示叠字。
+   * 现在按 `data-open` 显隐 + 自动收起。
+   */
   private toast(key: Parameters<typeof t>[0]): void {
     this.toastEl.textContent = t(key);
+    this.toastEl.dataset.open = 'true';
+    if (this.toastTimer !== null) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      this.toastEl.dataset.open = 'false';
+      this.toastTimer = null;
+    }, UI.TOAST_VISIBLE_MS);
   }
 
   private handleError(err: unknown): void {

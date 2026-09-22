@@ -1,6 +1,9 @@
 // 盒模型区（T109）：width/height、margin/padding 四向。外壳节点，ep- 前缀。
+// T122：标签本地化，英文 CSS 属性名退到 label 的 title（hover 可见），不再与上方
+//       文字属性区的中文标签混排。
+import { t, type MessageKey } from '../../i18n/zh-CN';
 import { inlineSizeValue } from '../../../core/style/boxProps';
-import { makeNumber } from './fields';
+import { hintField, makeNumber } from './fields';
 
 export interface BoxCommit {
   (prop: string, cssValue: string): void;
@@ -15,28 +18,35 @@ export class BoxModelSection {
     this.root.className = 'ep-box';
 
     const title = document.createElement('h4');
-    title.textContent = '盒模型';
+    title.textContent = t('panel.style.box');
     this.root.appendChild(title); // 外观由 app.css 的 .ep-box > h4 承担
 
-    const defs: Array<[string, string, number, number]> = [
-      ['width', 'width', 0, 5000],
-      ['height', 'height', 0, 5000],
-      ['marginTop', 'margin-top', -200, 200],
-      ['marginRight', 'margin-right', -200, 200],
-      ['marginBottom', 'margin-bottom', -200, 200],
-      ['marginLeft', 'margin-left', -200, 200],
-      ['paddingTop', 'padding-top', 0, 200],
-      ['paddingRight', 'padding-right', 0, 200],
-      ['paddingBottom', 'padding-bottom', 0, 200],
-      ['paddingLeft', 'padding-left', 0, 200],
+    // [JS 属性, CSS 属性名（title 提示）, 文案 key, min, max]
+    const defs: Array<[string, string, MessageKey, number, number]> = [
+      ['width', 'width', 'panel.style.box.width', 0, 5000],
+      ['height', 'height', 'panel.style.box.height', 0, 5000],
+      ['marginTop', 'margin-top', 'panel.style.box.marginTop', -200, 200],
+      ['marginRight', 'margin-right', 'panel.style.box.marginRight', -200, 200],
+      ['marginBottom', 'margin-bottom', 'panel.style.box.marginBottom', -200, 200],
+      ['marginLeft', 'margin-left', 'panel.style.box.marginLeft', -200, 200],
+      ['paddingTop', 'padding-top', 'panel.style.box.paddingTop', 0, 200],
+      ['paddingRight', 'padding-right', 'panel.style.box.paddingRight', 0, 200],
+      ['paddingBottom', 'padding-bottom', 'panel.style.box.paddingBottom', 0, 200],
+      ['paddingLeft', 'padding-left', 'panel.style.box.paddingLeft', 0, 200],
     ];
-    for (const [prop, label, min, max] of defs) {
-      const f = makeNumber(label, min, max, 1);
+    for (const [prop, hint, key, min, max] of defs) {
+      const f = makeNumber(t(key), min, max, 1);
+      hintField(f, hint);
       this.fields.push({ prop, f });
       f.onCommit((v) => commit(prop, v === '' ? '' : `${v}px`));
       this.root.appendChild(f.el);
     }
     host.appendChild(this.root);
+  }
+
+  /** 未选中态：清空全部显示值，避免残留上一个元素的值。 */
+  clear(): void {
+    for (const { f } of this.fields) f.setValue('');
   }
 
   refresh(els: Element[], cssList: (CSSStyleDeclaration | null)[]): void {

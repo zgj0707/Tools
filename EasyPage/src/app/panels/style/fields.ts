@@ -7,11 +7,25 @@ export interface FieldHandle {
   setDisabled(d: boolean): void;
 }
 
+/**
+ * 把英文 CSS 属性名挂到字段行 label 上做 hover 提示（T122）。
+ * 面板文案已统一中文，精确属性名靠 title 保留。
+ */
+export function hintField(f: { el: HTMLElement }, hint: string): void {
+  const lab = f.el.querySelector('label');
+  if (lab) lab.title = hint;
+}
+
+let fieldSeq = 0;
+
 function wrap(label: string, control: HTMLElement): HTMLElement {
   const row = document.createElement('div');
   row.className = 'ep-field';
   const lab = document.createElement('label');
   lab.textContent = label;
+  // label 与控件此前没有 for/id 关联（无障碍缺口，也让 getByLabel 不可用）。此处补上。
+  if (!control.id) control.id = `ep-field-${++fieldSeq}`;
+  lab.htmlFor = control.id;
   row.appendChild(lab);
   row.appendChild(control);
   return row;
@@ -21,7 +35,7 @@ export function makeSelect(
   label: string,
   options: ReadonlyArray<{ value: string; label: string }>,
   mixedText: string,
-): FieldHandle {
+): FieldHandle & { setEmptyText(s: string): void } {
   const sel = document.createElement('select');
   for (const o of options) {
     const opt = document.createElement('option');
@@ -39,6 +53,10 @@ export function makeSelect(
     setValue(v: string) {
       sel.value = v;
     },
+    /** 空选项文案随上下文切换：「混合」（多选值不一致）↔「—」（未选中）。 */
+    setEmptyText(s: string) {
+      mixed.textContent = s;
+    },
     onCommit(cb) {
       sel.addEventListener('change', () => cb(sel.value));
     },
@@ -55,7 +73,14 @@ export function makeColor(label: string): FieldHandle {
   return {
     el: row,
     setValue(v: string) {
-      if (/^#[0-9a-fA-F]{6}$/.test(v)) input.value = v;
+      // input[type=color] 无法表达「空」。空值/无共有值时标 data-unset 视觉降级，
+      // 否则会静默沿用上一次的颜色冒充当前值（T122）。
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        input.value = v;
+        row.dataset.unset = 'false';
+      } else {
+        row.dataset.unset = 'true';
+      }
     },
     onCommit(cb) {
       input.addEventListener('change', () => cb(input.value));

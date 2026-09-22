@@ -1,4 +1,6 @@
 // 左侧元素面板（T111）：插入各类元素 + 删除选中。外壳 ep- 节点，不进被编辑文档。
+// 文案一律走 i18n（契约 01 §3/§9），不在此硬编码中文。
+import { t } from '../../i18n/zh-CN';
 import { KIND_LABELS, type ElementKind } from '../../../core/elements/factory';
 
 export class ElementsPanel {
@@ -14,7 +16,7 @@ export class ElementsPanel {
     this.root.className = 'ep-elements';
 
     const title = document.createElement('h3');
-    title.textContent = '插入';
+    title.textContent = t('panel.elements.title');
     this.root.appendChild(title);
 
     for (const kind of Object.keys(KIND_LABELS) as ElementKind[]) {
@@ -27,19 +29,19 @@ export class ElementsPanel {
 
     const del = document.createElement('button');
     del.className = 'ep-btn ep-btn--block ep-btn--danger';
-    del.textContent = '删除选中';
+    del.textContent = t('panel.elements.delete');
     del.addEventListener('click', () => this.onDeleteCb?.());
     this.root.appendChild(del);
 
     this.ulBtn = document.createElement('button');
     this.ulBtn.className = 'ep-btn ep-btn--block';
-    this.ulBtn.textContent = '项目符号列表';
+    this.ulBtn.textContent = t('panel.elements.ul');
     this.ulBtn.addEventListener('click', () => this.onListCb?.('ul'));
     this.root.appendChild(this.ulBtn);
 
     this.olBtn = document.createElement('button');
     this.olBtn.className = 'ep-btn ep-btn--block';
-    this.olBtn.textContent = '编号列表';
+    this.olBtn.textContent = t('panel.elements.ol');
     this.olBtn.addEventListener('click', () => this.onListCb?.('ol'));
     this.root.appendChild(this.olBtn);
 
@@ -53,8 +55,9 @@ export class ElementsPanel {
   setListButtons(ulEnabled: boolean, olEnabled: boolean, unwrapLabel: string): void {
     this.ulBtn.disabled = !ulEnabled;
     this.olBtn.disabled = !olEnabled;
-    this.ulBtn.textContent = unwrapLabel === 'ul' ? '取消列表' : '项目符号列表';
-    this.olBtn.textContent = unwrapLabel === 'ol' ? '取消列表' : '编号列表';
+    // unwrapLabel === 'ul' 表示当前为 ul、按钮转为「取消列表」
+    this.ulBtn.textContent = unwrapLabel === 'ul' ? t('panel.style.unlist') : t('panel.elements.ul');
+    this.olBtn.textContent = unwrapLabel === 'ol' ? t('panel.style.unlist') : t('panel.elements.ol');
   }
 
   onInsert(cb: (kind: ElementKind) => void): void {

@@ -94,6 +94,49 @@ export const messages = {
   'panel.style.link': '链接',
   'panel.style.setLink': '设置链接',
   'panel.style.clearLink': '清除链接',
+
+  // 未选中态（T122）：面板不得沿用上一个选中元素的值冒充当前状态
+  'panel.style.unset': '—',
+  'panel.style.empty': '未选中元素 · 点击画布中的元素开始编辑',
+
+  // 盒模型区（T122）：原先直接渲染英文 CSS 属性名，与上方中文标签混排。
+  // 英文属性名改挂 label 的 title，hover 仍可查到精确属性。
+  'panel.style.box': '盒模型',
+  'panel.style.box.width': '宽度',
+  'panel.style.box.height': '高度',
+  'panel.style.box.marginTop': '上外边距',
+  'panel.style.box.marginRight': '右外边距',
+  'panel.style.box.marginBottom': '下外边距',
+  'panel.style.box.marginLeft': '左外边距',
+  'panel.style.box.paddingTop': '上内边距',
+  'panel.style.box.paddingRight': '右内边距',
+  'panel.style.box.paddingBottom': '下内边距',
+  'panel.style.box.paddingLeft': '左内边距',
+
+  // 外观区（T122）：同上。border-style 的 value 仍是 CSS 关键字，只本地化显示文案。
+  'panel.style.deco': '外观',
+  'panel.style.deco.borderWidth': '边框粗细',
+  'panel.style.deco.borderStyle': '边框样式',
+  'panel.style.deco.borderColor': '边框颜色',
+  'panel.style.deco.radius': '圆角',
+  'panel.style.deco.opacity': '不透明度',
+  'panel.style.deco.shadow': '阴影',
+  'panel.style.deco.shadowX': '阴影 X',
+  'panel.style.deco.shadowY': '阴影 Y',
+  'panel.style.deco.shadowBlur': '阴影模糊',
+  'panel.style.deco.shadowSpread': '阴影扩散',
+  'panel.style.deco.shadowColor': '阴影颜色',
+  'panel.style.borderStyle.none': '无',
+  'panel.style.borderStyle.solid': '实线',
+  'panel.style.borderStyle.dashed': '虚线',
+  'panel.style.borderStyle.dotted': '点线',
+
+  // 左侧插入面板（T122）：原为硬编码中文，违反契约 01 §3/§9。
+  // ⚠️ 这四个字串是 list.spec.ts 的 getByRole 定位锚点，改文案必须同步改用例。
+  'panel.elements.title': '插入',
+  'panel.elements.delete': '删除选中',
+  'panel.elements.ul': '项目符号列表',
+  'panel.elements.ol': '编号列表',
 } as const;
 
 export type MessageKey = keyof typeof messages;

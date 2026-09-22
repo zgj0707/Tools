@@ -124,11 +124,21 @@ textarea {
    刻意留在文档流内（不做 position:absolute）—— 绝对浮层会遮住画布顶部约 36px，
    而 e2e 里大量断言直接点击画布元素，被遮挡即命中失败。
    「浮动」感由胶囊造型 + 阴影 + 与画布等宽的左对齐营造。 */
+/* 对齐 / 分布浮条。
+   ⚠️ 必须 `flex-wrap: wrap` + `max-width: 100%`（T122 走查修复）。
+   原实现是 `flex: 0 0 auto` + 默认 `flex-wrap: nowrap`，宽度由 8 个按钮决定（实测 497px），
+   完全不受画布列约束。窄视口（如 1080px）双面板展开时画布列只有 408px ⇒ 右端 89px 溢出，
+   末位「垂直等距」按钮的中心点被右侧样式面板接管（elementFromPoint 命中样式面板，
+   不是按钮本身），**点了没反应且看不出来**。
+   走查的「同区域按钮重叠」检查查不到它 —— 那是跨区域遮挡，需要靠 elementFromPoint 判可达性。
+   现在超宽时自动换行，任何视口宽度下 8 个按钮都可达。 */
 .ep-alignbar {
   flex: 0 0 auto;
   align-self: flex-start;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  max-width: 100%;
   gap: var(--ep-sp-1);
   margin-bottom: var(--ep-sp-2);
   padding: var(--ep-sp-1) var(--ep-sp-2);
@@ -210,25 +220,17 @@ textarea {
   border-color: var(--ep-accent);
   box-shadow: 0 0 0 3px var(--ep-accent-soft);
 }
+/* 原生 file 控件：视觉隐藏，由「选择文件」按钮代理触发（T122 走查修复）。
+   原因：Chromium 把它渲染成英文「Choose File / No file chosen」，文案不可本地化，
+   ::file-selector-button 也只能改按钮而改不掉旁边的英文提示文本。
+   保留在 DOM 且不设 display:none —— 用 1px + opacity:0，既不可见，
+   又不会让 setInputFiles() 这类直接操作 DOM 的路径失效。 */
 .ep-import__file {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: var(--ep-fs-12);
-  color: var(--ep-ink-2);
-}
-.ep-import__file::file-selector-button {
-  height: var(--ep-control-h);
-  margin-right: var(--ep-sp-2);
-  padding: 0 var(--ep-sp-3);
-  border: 1px solid var(--ep-line-2);
-  border-radius: var(--ep-r-sm);
-  background: var(--ep-surface);
-  color: var(--ep-ink);
-  font-size: var(--ep-fs-12);
-  cursor: pointer;
-}
-.ep-import__file::file-selector-button:hover {
-  background: var(--ep-surface-3);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ---- 草稿区：导入浮层内的「继续上次编辑」入口 ---- */
@@ -242,6 +244,32 @@ textarea {
   background: var(--ep-surface-2);
   font-size: var(--ep-fs-12);
   color: var(--ep-ink-2);
+}
+/* 四段分工（T122 走查修复）：标签固定、文件名可截断、时间戳弱化、操作靠右。
+   原实现是「最近草稿：<文件名> <时间戳> 继续 删除」一整行拼接，四者同权重。 */
+.ep-draft__label {
+  flex: 0 0 auto;
+  color: var(--ep-ink-3);
+}
+.ep-draft__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ep-ink);
+}
+.ep-draft__time {
+  flex: 0 0 auto;
+  color: var(--ep-ink-3);
+  font-size: var(--ep-fs-11);
+}
+.ep-draft__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+  margin-left: auto;
 }
 
 /* ---- 主区：左面板 + 画布列 + 右面板（gap 恒为 0，宽度由面板自身 border 分隔）---- */
@@ -281,7 +309,13 @@ textarea {
   position: fixed;
   left: 50%;
   bottom: var(--ep-sp-5);
-  transform: translateX(-50%);
+  /* ⚠️ 居中靠内联/这里的 translateX(-50%)；显隐靠 data-open，两个状态都必须带该位移。
+     默认隐藏是必须的：空 textContent 的 div 仍有 padding，首屏会在底部中央
+     渲染出一个空的深色药丸（T122 走查截图为证）。 */
+  transform: translateX(-50%) translateY(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease, transform 160ms ease;
   z-index: 9999;
   max-width: 60%;
   padding: var(--ep-sp-2) var(--ep-sp-4);
@@ -291,6 +325,11 @@ textarea {
   font-size: var(--ep-fs-12);
   box-shadow: var(--ep-sh-2);
   pointer-events: none;
+}
+.ep-toast[data-open='true'] {
+  transform: translateX(-50%);
+  opacity: 1;
+  visibility: visible;
 }
 
 /* ============ 2. 通用控件 ============ */
@@ -387,6 +426,10 @@ textarea {
   padding: 2px;
   cursor: pointer;
 }
+/* 颜色控件无法表达空值：无共有值 / 未选中时降级显示，避免沿用旧色冒充当前值（T122） */
+.ep-field[data-unset='true'] > input[type='color'] {
+  opacity: 0.3;
+}
 .ep-field > button {
   flex: 1 1 auto;
   height: var(--ep-control-h);
@@ -464,9 +507,16 @@ textarea {
 }
 
 /* ============ 4. 左侧「图层」面板 ============ */
+/* width 200 → 260（T122 走查修复）。
+   每行要塞进：折叠三角 12px + 6 个行内按钮 98px + 7 道 gap，
+   200px 面板扣掉 padding 后只剩约 30px 给节点名 —— 实测标签被压到
+   `nav…` / `head…` / `di…` 三四个字符，图层树的「看清结构」价值全部丧失。
+   加宽到 260px 后节点名可得约 90px，足以显示 `header.hero` / `section.features`。
+   ⚠️ max-height:600px 是性能红线（layers.spec 断言「15000 节点首屏行数有界」），
+   不得为了与其他面板对齐而改大。 */
 .ep-layers {
   flex: 0 0 auto;
-  width: 200px;
+  width: 260px;
   max-height: 600px;
   padding: var(--ep-sp-3);
   border-right: 1px solid var(--ep-line);
@@ -481,7 +531,7 @@ textarea {
 .ep-layer-row {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding: 2px 4px;
   border-radius: var(--ep-r-xs);
   font-size: var(--ep-fs-12);
@@ -558,9 +608,16 @@ textarea {
 }
 
 /* ============ 5. 右侧「样式」面板 ============ */
+/* 必须自带滚动容器（T122 走查修复）。
+   样式面板内容（文本 + 盒模型 11 项 + 外观）自然高约 1260px，远超 900px 视口。
+   原先没有 max-height / overflow，面板把整页撑到 1321px：想看底部「外观」区，
+   得把顶栏和画布一起滚走，而且三列高度严重失衡（插入 469 / 图层 439 / 样式 1261）。
+   现在把高度上限钉到「视口 - 顶栏 - 主区上留白」，超出部分面板内部滚动。 */
 .ep-panel {
   flex: 0 0 auto;
   width: 220px;
+  max-height: calc(100vh - var(--ep-topbar-h) - var(--ep-sp-3));
+  overflow-y: auto;
   padding: var(--ep-sp-3);
   border-left: 1px solid var(--ep-line);
   background: var(--ep-surface-2);
@@ -582,6 +639,11 @@ textarea {
   font-size: var(--ep-fs-12);
   color: var(--ep-danger);
   display: none;
+}
+/* 中性提示（空态说明）与红色守卫提示区分开（T122） */
+.ep-notice[data-kind='info'] {
+  background: var(--ep-surface-3);
+  color: var(--ep-ink-2);
 }
 /* 样式面板里的分组小标题（BoxModelSection / DecorationSection） */
 .ep-box > h4,
@@ -697,6 +759,24 @@ textarea {
   cursor: default;
 }
 .ep-menu-item[data-disabled='true']:hover {
+  background: transparent;
+  color: var(--ep-ink-3);
+}
+/* 破坏性操作单独分组并配色（T122：删除原排在第一项） */
+.ep-menu-sep {
+  height: 1px;
+  margin: var(--ep-sp-1) 0;
+  background: var(--ep-line);
+}
+.ep-menu-item[data-danger='true'] {
+  color: var(--ep-danger);
+}
+.ep-menu-item[data-danger='true']:hover {
+  background: rgba(217, 58, 43, 0.08);
+  color: var(--ep-danger);
+}
+.ep-menu-item[data-danger='true'][data-disabled='true'],
+.ep-menu-item[data-danger='true'][data-disabled='true']:hover {
   background: transparent;
   color: var(--ep-ink-3);
 }

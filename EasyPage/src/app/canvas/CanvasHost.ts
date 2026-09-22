@@ -5,6 +5,9 @@
 
 import { EP } from '../../constants';
 
+/** 就地编辑态样式表 id。`ep-` 前缀是导出清理的识别依据，不可改。 */
+const EDITING_STYLE_ID = 'ep-inline-edit-style';
+
 export class CanvasHost {
   readonly frame: HTMLIFrameElement;
   readonly overlay: HTMLDivElement;
@@ -76,6 +79,8 @@ export class CanvasHost {
   }
 
   private attachListeners(cd: Document): void {
+    this.injectEditingStyle(cd);
+
     // 双击就地改字
     cd.addEventListener('dblclick', (e) => {
       const target = e.target as Node | null;
@@ -121,6 +126,25 @@ export class CanvasHost {
 
     // 编辑文档内滚动（捕获，含子元素滚动）后重定位；window resize 已在构造时挂载一次
     cd.addEventListener('scroll', () => this.requestLayout(), true);
+  }
+
+  /**
+   * 就地编辑态视觉高亮（T122）。原实现双击进入 contenteditable 后，除了文本光标
+   * 没有任何提示 —— 用户不知道当前处于编辑态、也不知道 Esc 可取消。
+   *
+   * 用 `[data-ep-editing]` 属性选择器，不往元素上挂 class；outline 不参与布局，
+   * 因此不影响 e2e 的坐标基准（拖拽 / 缩放 / 吸附）。
+   *
+   * ⚠️ 这个 <style id="ep-..."> 会被导出清理的第 ④ 类规则摘除
+   *    （见 core/serialize/stripArtifacts：style[id^="ep-"] / script[id^="ep-"]）。
+   */
+  private injectEditingStyle(cd: Document): void {
+    if (cd.getElementById(EDITING_STYLE_ID)) return;
+    const style = cd.createElement('style');
+    style.id = EDITING_STYLE_ID;
+    // 虚线 + 强调色：与外壳的实线选中框（--ep-selected #2f6bff）区分开
+    style.textContent = `[${EP.EDITING_ATTR}] { outline: 2px dashed #2f6bff; outline-offset: 2px; }`;
+    (cd.head ?? cd.documentElement).appendChild(style);
   }
 
   private requestLayout(): void {

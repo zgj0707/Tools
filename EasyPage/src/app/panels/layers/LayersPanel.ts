@@ -110,28 +110,35 @@ export class LayersPanel {
     rowEl.addEventListener('click', () => this.hooks.select(el));
     rowEl.appendChild(name);
 
-    // 排序按钮：上移/下移/置顶/置底
+    // 排序按钮：置顶/上移/下移/置底
     const parent = el.parentElement;
     const kids = parent ? Array.from(parent.children) : [];
     const idx = kids.indexOf(el);
-    const mkBtn = (txt: string, dir: -1 | 1 | 'top' | 'bottom', disabled: boolean) => {
+    // 原先四个按钮写成 `↑ ↑ ↓ ↓` —— 两组文案完全相同，用户无法分辨
+    // 「置顶 vs 上移」「下移 vs 置底」（T122 走查发现）。改用成对符号区分，
+    // 并补 title 供 hover 时确认语义。
+    // ⚠️ data-dir 是 e2e 的定位锚点（layers.spec 用 button[data-dir="-1"]），不得改动；
+    //    title 只作 tooltip，不会成为可访问名（按钮有 textContent）。
+    const mkBtn = (txt: string, dir: -1 | 1 | 'top' | 'bottom', disabled: boolean, title: string) => {
       const b = document.createElement('button');
       b.className = 'ep-layer-reorder';
       b.dataset.dir = String(dir);
       b.textContent = txt;
+      b.title = title;
       b.disabled = disabled;
       b.addEventListener('click', (e) => { e.stopPropagation(); this.hooks.reorder(el, dir); });
       rowEl.appendChild(b);
     };
     const noParent = !parent;
-    mkBtn('↑', 'top', noParent || idx === 0);
-    mkBtn('↑', -1, noParent || idx <= 0);
-    mkBtn('↓', 1, noParent || idx < 0 || idx >= kids.length - 1);
-    mkBtn('↓', 'bottom', noParent || idx === kids.length - 1);
+    mkBtn('\u2912', 'top', noParent || idx === 0, '置顶');
+    mkBtn('\u2191', -1, noParent || idx <= 0, '上移');
+    mkBtn('\u2193', 1, noParent || idx < 0 || idx >= kids.length - 1, '下移');
+    mkBtn('\u2913', 'bottom', noParent || idx === kids.length - 1, '置底');
 
     const lockBtn = document.createElement('button');
     lockBtn.className = 'ep-layer-lock';
     lockBtn.textContent = lock.isLocked(el) ? '\u{1F512}' : '\u{1F513}';
+    lockBtn.title = lock.isLocked(el) ? '解锁：允许移动与编辑' : '锁定：禁止移动与编辑';
     lockBtn.addEventListener('click', (e) => { e.stopPropagation(); this.hooks.toggleLock(el); });
     rowEl.appendChild(lockBtn);
 
@@ -141,6 +148,7 @@ export class LayersPanel {
     // （e2e 按 👁 / 🚫 文本定位这个按钮，加类名不影响）
     hideBtn.className = 'ep-layer-hide';
     hideBtn.textContent = hidden ? '🚫' : '👁';
+    hideBtn.title = hidden ? '显示该元素' : '隐藏该元素';
     hideBtn.addEventListener('click', (e) => { e.stopPropagation(); this.hooks.toggleHide(el); });
     rowEl.appendChild(hideBtn);
 
