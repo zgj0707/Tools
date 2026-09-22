@@ -23,13 +23,12 @@ const SAMPLE = `<!DOCTYPE html>
   body{font-family:system-ui,sans-serif;margin:0;padding:32px;color:#1f2937}
   h1{font-size:34px;margin:0 0 12px}
   p{font-size:15px;line-height:1.7;color:#5b6472;margin:0 0 16px}
-  .card{display:flex;gap:12px;margin-top:20px}
-  .box{flex:1;padding:20px;border:1px solid #e5e7eb;border-radius:10px}
+  .promo{background:#eef4ff;border:1px solid #d6e2fb;border-radius:10px;padding:16px;box-sizing:border-box}
 </style></head>
 <body>
   <h1>春季焕新季</h1>
   <p>全场低至五折，会员额外享 9 折，活动截止 4 月 30 日。</p>
-  <div class="card"><div class="box">新人礼包</div><div class="box">会员日</div></div>
+  <div class="promo" style="width:280px;height:150px">限时礼包 · 点此领取</div>
 </body>
 </html>`;
 
@@ -86,7 +85,8 @@ try {
   await page.waitForTimeout(400);
 
   const frame = page.frameLocator('#ep-canvas-frame');
-  await frame.locator('h1').click();
+  // 选一个带显式 inline 尺寸的元素 —— 只有这样 isResizable 才为真、8 个手柄才显示
+  await frame.locator('.promo').click();
   await page.waitForTimeout(400);
 
   // 触发一次 toast（不改变文档），让底部胶囊可见
