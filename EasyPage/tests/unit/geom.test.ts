@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { frameToOverlay, rectsIntersect, type OverlayBox } from '../../src/app/canvas/geom';
+import { frameToOverlay, hoverFillAllowed, isDocumentRoot, rectsIntersect, type OverlayBox } from '../../src/app/canvas/geom';
 
 function makeRect(left: number, top: number, width: number, height: number): DOMRect {
   return { left, top, width, height } as DOMRect;
@@ -46,5 +46,47 @@ describe('rectsIntersect', () => {
   });
   it('零面积框选矩形不命中', () => {
     expect(rectsIntersect({left:0,top:0,right:0,bottom:0}, {left:0,top:0,right:10,bottom:10})).toBe(false);
+  });
+});
+
+// T123：整页蓝框回归。画布 1000×500，阈值 1/4（125000）。
+describe('hoverFillAllowed', () => {
+  const canvas = makeRect(0, 0, 1000, 500);
+  const box = (w: number, h: number): OverlayBox => ({ left: 0, top: 0, width: w, height: h });
+
+  it('小元素（段落）允许填充', () => {
+    expect(hoverFillAllowed(box(1000, 30), canvas)).toBe(true);
+  });
+
+  it('恰好等于阈值仍允许填充', () => {
+    // 500×250 = 125000 = 25%
+    expect(hoverFillAllowed(box(500, 250), canvas)).toBe(true);
+  });
+
+  it('超过阈值（大容器的 42%）不给填充', () => {
+    // 1000×256 = 256000 ≈ 51%
+    expect(hoverFillAllowed(box(1000, 256), canvas)).toBe(false);
+  });
+
+  it('整页大小的框不给填充', () => {
+    expect(hoverFillAllowed(box(1000, 500), canvas)).toBe(false);
+  });
+
+  it('画布面积退化为 0 时不给填充（避免除零产生 Infinity）', () => {
+    expect(hoverFillAllowed(box(10, 10), makeRect(0, 0, 0, 0))).toBe(false);
+  });
+});
+
+describe('isDocumentRoot', () => {
+  it('body 与 documentElement 判为根', () => {
+    expect(isDocumentRoot(document.body)).toBe(true);
+    expect(isDocumentRoot(document.documentElement)).toBe(true);
+  });
+
+  it('普通元素不判为根', () => {
+    const div = document.createElement('div');
+    document.body.appendChild(div);
+    expect(isDocumentRoot(div)).toBe(false);
+    div.remove();
   });
 });

@@ -709,6 +709,11 @@ textarea {
   border: 2px solid var(--ep-accent-line);
   background: var(--ep-accent-soft);
 }
+/* 大容器（框面积 > 画布 1/4）只描边不填充。数据的判定在 geom.hoverFillAllowed，
+   此处只负责表现 —— 与 data-open / data-danger 同一套「状态挂 data-*」的写法。 */
+#ep-hover-box[data-fill='false'] {
+  background: none;
+}
 #ep-selected-box {
   border: 2px solid var(--ep-selected);
 }

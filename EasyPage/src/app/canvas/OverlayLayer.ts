@@ -77,9 +77,15 @@ export class OverlayLayer {
     }
   }
 
-  /** hover 高亮框（outer viewport 坐标，null 隐藏）。 */
-  setHover(box: OverlayBox | null): void {
+  /**
+   * hover 高亮框（outer viewport 坐标，null 隐藏）。
+   *
+   * `fill=false` 时只描边不填充 —— 由调用方按框面积占比决定（见 geom.hoverFillAllowed）。
+   * 大容器保留 12% 蓝填充会盖住整页内容，是「蓝色框影响使用」的直接成因（T123）。
+   */
+  setHover(box: OverlayBox | null, fill = true): void {
     this.apply(this.hoverBox, box);
+    this.hoverBox.dataset.fill = fill ? 'true' : 'false';
   }
 
   /** 选中框（outer viewport 坐标，null 隐藏）；同时定位 8 手柄。 */

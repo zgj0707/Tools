@@ -10,6 +10,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -267,6 +269,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -507,6 +511,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -1572,6 +1578,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -2652,6 +2660,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -3732,6 +3742,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -4802,6 +4814,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -5882,6 +5896,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -6962,6 +6978,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -8042,6 +8060,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -9034,12 +9054,7 @@
           "h": 42
         },
         "multiBoxes": 0,
-        "hoverBox": {
-          "x": 444,
-          "y": 156,
-          "w": 750,
-          "h": 42
-        }
+        "hoverBox": null
       },
       "viewport": {
         "w": 1440,
@@ -9122,6 +9137,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -10204,6 +10221,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -11284,6 +11303,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -12344,6 +12365,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -12620,6 +12643,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -13737,6 +13762,8 @@
       "overlaps": [],
       "covered": [],
       "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
       "regionButtons": {
         "topbar": [
           {
@@ -14805,5 +14832,1314 @@
     },
     "logs": [],
     "shot": "qa/audit/shots/16-narrow-panels-open.png"
+  },
+  {
+    "id": "17-hover-blank-stay",
+    "name": "悬停画布空白区并停住（大面积着色遮挡）",
+    "ok": true,
+    "audit": {
+      "truncated": [],
+      "zeroSize": [],
+      "outOfViewport": [],
+      "overlaps": [],
+      "covered": [],
+      "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
+      "regionButtons": {
+        "topbar": [
+          {
+            "text": "粘贴 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "新建空白",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "预览",
+            "w": 50,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "导出 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "复制 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "重置位移",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "格式刷",
+            "w": 62,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "插入与图层",
+            "w": 86,
+            "h": 28,
+            "pressed": "false",
+            "disabled": null
+          },
+          {
+            "text": "样式",
+            "w": 50,
+            "h": 28,
+            "pressed": "false",
+            "disabled": null
+          }
+        ],
+        "alignbar": [
+          {
+            "text": "左",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "右",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "居中",
+            "w": 50,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "顶",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "底",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "垂直居中",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "水平等距",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "垂直等距",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          }
+        ]
+      },
+      "geometry": {
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 48
+        },
+        "alignbar": {
+          "x": 16,
+          "y": 60,
+          "w": 509,
+          "h": 38
+        },
+        "elements": null,
+        "layers": null,
+        "style": null,
+        "canvas": {
+          "x": 16,
+          "y": 106,
+          "w": 1408,
+          "h": 600
+        },
+        "breadcrumb": null,
+        "importOverlay": null,
+        "toast": {
+          "x": 680,
+          "y": 842,
+          "w": 80,
+          "h": 34
+        },
+        "selectionBox": null,
+        "multiBoxes": 0,
+        "hoverBox": null
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900,
+        "scrollH": 900,
+        "scrollW": 1440
+      },
+      "scrollables": [
+        {
+          "sel": ".ep-panel",
+          "boxH": 0,
+          "clientH": 0,
+          "scrollH": 0,
+          "overflowY": "auto",
+          "maxHeight": "840px",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-elements",
+          "boxH": 0,
+          "clientH": 0,
+          "scrollH": 0,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-layers",
+          "boxH": 0,
+          "clientH": 0,
+          "scrollH": 0,
+          "overflowY": "auto",
+          "maxHeight": "600px",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-main",
+          "boxH": 852,
+          "clientH": 852,
+          "scrollH": 852,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-canvas-row",
+          "boxH": 646,
+          "clientH": 646,
+          "scrollH": 646,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-canvas-col",
+          "boxH": 646,
+          "clientH": 646,
+          "scrollH": 646,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        }
+      ],
+      "counts": {
+        "appButtons": 46,
+        "visibleAppButtons": 17
+      }
+    },
+    "logs": [],
+    "shot": "qa/audit/shots/17-hover-blank-stay.png"
+  },
+  {
+    "id": "18-hover-then-leave",
+    "name": "悬停元素后指针移出画布（高亮滞留）",
+    "ok": true,
+    "audit": {
+      "truncated": [],
+      "zeroSize": [],
+      "outOfViewport": [],
+      "overlaps": [],
+      "covered": [],
+      "regionOverflow": [],
+      "bigTint": [],
+      "staleHover": [],
+      "regionButtons": {
+        "topbar": [
+          {
+            "text": "粘贴 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "新建空白",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "预览",
+            "w": 50,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "导出 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "复制 HTML",
+            "w": 85,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "重置位移",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "格式刷",
+            "w": 62,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "插入与图层",
+            "w": 86,
+            "h": 28,
+            "pressed": "true",
+            "disabled": null
+          },
+          {
+            "text": "样式",
+            "w": 50,
+            "h": 28,
+            "pressed": "true",
+            "disabled": null
+          }
+        ],
+        "alignbar": [
+          {
+            "text": "左",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "右",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "居中",
+            "w": 50,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "顶",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "底",
+            "w": 38,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "垂直居中",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "水平等距",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "垂直等距",
+            "w": 74,
+            "h": 28,
+            "pressed": null,
+            "disabled": true
+          }
+        ],
+        "elements": [
+          {
+            "text": "标题 1",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "标题 2",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "标题 3",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "段落",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "按钮",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "图片",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "容器",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "分割线",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "区块",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "表格",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "删除选中",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "项目符号列表",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "编号列表",
+            "w": 135,
+            "h": 28,
+            "pressed": null,
+            "disabled": null
+          }
+        ],
+        "layers": [
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "⤒",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↑",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "↓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "⤓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": true
+          },
+          {
+            "text": "🔓",
+            "w": 16,
+            "h": 16,
+            "pressed": null,
+            "disabled": null
+          },
+          {
+            "text": "👁",
+            "w": 18,
+            "h": 18,
+            "pressed": null,
+            "disabled": null
+          }
+        ],
+        "style": []
+      },
+      "geometry": {
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 48
+        },
+        "alignbar": {
+          "x": 436,
+          "y": 60,
+          "w": 509,
+          "h": 38
+        },
+        "elements": {
+          "x": 16,
+          "y": 60,
+          "w": 160,
+          "h": 469
+        },
+        "layers": {
+          "x": 176,
+          "y": 60,
+          "w": 260,
+          "h": 439
+        },
+        "style": {
+          "x": 1204,
+          "y": 60,
+          "w": 220,
+          "h": 840
+        },
+        "canvas": {
+          "x": 436,
+          "y": 106,
+          "w": 768,
+          "h": 600
+        },
+        "breadcrumb": null,
+        "importOverlay": null,
+        "toast": {
+          "x": 680,
+          "y": 842,
+          "w": 80,
+          "h": 34
+        },
+        "selectionBox": null,
+        "multiBoxes": 0,
+        "hoverBox": null
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900,
+        "scrollH": 900,
+        "scrollW": 1440
+      },
+      "scrollables": [
+        {
+          "sel": ".ep-panel",
+          "boxH": 840,
+          "clientH": 840,
+          "scrollH": 1221,
+          "overflowY": "auto",
+          "maxHeight": "840px",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-elements",
+          "boxH": 469,
+          "clientH": 469,
+          "scrollH": 469,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-layers",
+          "boxH": 439,
+          "clientH": 439,
+          "scrollH": 439,
+          "overflowY": "auto",
+          "maxHeight": "600px",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-main",
+          "boxH": 852,
+          "clientH": 852,
+          "scrollH": 852,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-canvas-row",
+          "boxH": 840,
+          "clientH": 840,
+          "scrollH": 840,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        },
+        {
+          "sel": ".ep-canvas-col",
+          "boxH": 646,
+          "clientH": 646,
+          "scrollH": 646,
+          "overflowY": "visible",
+          "maxHeight": "none",
+          "clipped": false
+        }
+      ],
+      "counts": {
+        "appButtons": 136,
+        "visibleAppButtons": 132
+      }
+    },
+    "logs": [],
+    "shot": "qa/audit/shots/18-hover-then-leave.png"
   }
 ]

@@ -16,6 +16,7 @@ export class CanvasHost {
   private selectHandler: ((el: Element, shiftKey: boolean) => void) | null = null;
   private blankDownHandler: ((e: PointerEvent) => void) | null = null;
   private layoutHandler: (() => void) | null = null;
+  private leaveHandler: (() => void) | null = null;
   private rafId = 0;
 
   constructor(host: HTMLElement) {
@@ -68,6 +69,13 @@ export class CanvasHost {
   onHover(handler: (el: Element) => void): void {
     this.hoverHandler = handler;
   }
+  /**
+   * 指针离开画布（T123）。没有这个回调时 hover 高亮会一直留在上一次悬停的元素上 ——
+   * 用户把鼠标移回顶栏调样式时，画布上那圈高亮框始终不退，正好挡住要看的效果。
+   */
+  onLeave(handler: () => void): void {
+    this.leaveHandler = handler;
+  }
   onSelect(handler: (el: Element, shiftKey: boolean) => void): void {
     this.selectHandler = handler;
   }
@@ -99,6 +107,12 @@ export class CanvasHost {
         this.rafId = 0;
         this.hoverHandler?.(el);
       });
+    });
+
+    // pointerleave 不冒泡，挂在 document 上收不到 —— 必须挂 documentElement。
+    // 指针移出画布（去顶栏 / 去面板）时立即清掉 hover 高亮（T123）。
+    cd.documentElement.addEventListener('pointerleave', () => {
+      this.leaveHandler?.();
     });
 
     // pointerdown：命中元素选中；空白（body/html）清空

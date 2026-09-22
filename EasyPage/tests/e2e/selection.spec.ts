@@ -69,3 +69,53 @@ test('覆盖层：点击选中框 / hover 高亮 / 滚动贴合 / 面包屑选�
   await editFrame.locator('body').click({ position: { x: 5, y: 5 } });
   await expect(selectedBox).not.toBeVisible();
 });
+
+// T123 回归：hover 高亮曾给整页套一圈 2px 蓝框 + 12% 蓝填充（用户报「蓝色框非常影响使用」）。
+// 成因三条：① 悬停空白区命中的是 html/body，框 = 整页；② 12% 填充铺满整页盖住内容；
+//          ③ 指针离开画布后高亮框不撤，移到顶栏调样式时一直挡着画布。
+const t123Fixture = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>T123 hover</title>
+<style>html,body{margin:0;padding:0}section.hero{min-height:520px}</style></head>
+<body>
+  <section class="hero"><h1>主标题</h1><p class="desc">描述文字</p></section>
+</body>
+</html>`;
+
+test('hover 高亮：文档根不套框 / 大容器只描边 / 离开画布即撤（T123）', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('textarea').fill(t123Fixture);
+  await page.getByRole('button', { name: '导入 HTML' }).click();
+
+  const editFrame = page.frameLocator('#ep-canvas-frame');
+  const hoverBox = page.locator('#ep-hover-box');
+  const frameRect = await page.locator('#ep-canvas-frame').boundingBox();
+  expect(frameRect).not.toBeNull();
+  const fr = frameRect!;
+
+  // ① 悬停画布底部空白（section 之下 → 命中 html/body）→ 不出高亮框
+  await page.mouse.move(fr.x + fr.width / 2, fr.y + fr.height - 20);
+  await page.waitForTimeout(200);
+  await expect(hoverBox).toBeHidden();
+
+  // ② 悬停小元素（<p>，约占画布 3%）→ 出现高亮且带填充（保留嵌套辨识能力）
+  const pBox = await editFrame.locator('p.desc').boundingBox();
+  expect(pBox).not.toBeNull();
+  await page.mouse.move(pBox!.x + pBox!.width / 2, pBox!.y + pBox!.height / 2);
+  await page.waitForTimeout(200);
+  await expect(hoverBox).toBeVisible();
+  await expect(hoverBox).toHaveAttribute('data-fill', 'true');
+
+  // ③ 指针移出画布（顶栏）→ 高亮立刻撤掉，不再滞留挡画布
+  await page.mouse.move(fr.x + fr.width / 2, 20);
+  await page.waitForTimeout(200);
+  await expect(hoverBox).toBeHidden();
+
+  // ④ 悬停大容器（section，约占画布 87%）→ 仍描边但数据标记为「不填充」
+  await page.mouse.move(fr.x + fr.width / 2, fr.y + 300);
+  await page.waitForTimeout(200);
+  await expect(hoverBox).toBeVisible();
+  await expect(hoverBox).toHaveAttribute('data-fill', 'false');
+  const bg = await hoverBox.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bg).toBe('rgba(0, 0, 0, 0)');
+});

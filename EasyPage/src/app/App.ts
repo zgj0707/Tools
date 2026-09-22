@@ -22,7 +22,7 @@ import { clearTranslate } from '../core/interaction/transform';
 import { computeResize, type ResizeDirection } from '../core/interaction/resize';
 import { sanitizeImport } from '../core/io/sanitizeImport';
 import { auditResources } from '../core/serialize/resourceAudit';
-import { frameToOverlay, rectOf, rectsIntersect } from './canvas/geom';
+import { frameToOverlay, hoverFillAllowed, isDocumentRoot, rectOf, rectsIntersect } from './canvas/geom';
 import { CanvasHost } from './canvas/CanvasHost';
 import { InlineTextEditor } from './canvas/InlineTextEditor';
 import { OverlayLayer } from './canvas/OverlayLayer';
@@ -260,6 +260,8 @@ export class App {
       this.clearSelection();
     });
     this.canvas.onHover((el) => this.layoutHover(el));
+    // 指针离开画布即撤销 hover 高亮，避免它滞留在最后悬停的元素上（T123）
+    this.canvas.onLeave(() => this.overlay.setHover(null));
     this.canvas.onSelect((el: Element, shift: boolean) => this.onCanvasSelect(el, shift));
     this.canvas.onBlankDown((e: PointerEvent) => this.onBlankDown(e));
     this.marquee = new Marquee(this.canvas.overlay);
@@ -760,7 +762,17 @@ export class App {
 
   private layoutHover(el: Element): void {
     if (this.previewOpen) return;
-    this.overlay.setHover(this.toOverlayBox(el));
+    // 文档根（html / body）不高亮：它的框恒等于整页，悬停空白区时命中的就是它，
+    // 高亮 = 给整页套一圈 2px 蓝框 + 12% 蓝蒙层，内容颜色全被盖住（T123）。
+    // 根仍可从面包屑选中，功能不减。
+    if (isDocumentRoot(el)) {
+      this.overlay.setHover(null);
+      return;
+    }
+    const box = this.toOverlayBox(el);
+    // 大容器只描边不填充：填充是给按钮 / 标题这类小元素用来辨认嵌套层级的，
+    // 铺在整块分区上就变成遮挡（T123）。
+    this.overlay.setHover(box, hoverFillAllowed(box, this.canvas.frame.getBoundingClientRect()));
   }
 
   /** 重定位选中框；元素已被删除则清空失效选中；同步拖拽适配器 attach/detach。 */

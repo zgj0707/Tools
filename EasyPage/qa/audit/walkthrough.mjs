@@ -37,10 +37,25 @@ mkdirSync(SHOTS, { recursive: true });
 
 const FIXTURE = readFileSync(resolve(repoRoot, 'qa/fixtures/05-ai-landing.html'), 'utf8');
 
+/**
+ * T123 场景 17 专用：刻意「内容不足一屏」的短文档。
+ *
+ * 默认的 05-ai-landing 内容太短但画布高 600px，body 天然只有约 150px ——
+ * 悬停空白处虽然也会命中 html/body，但框只占画布 ~25%，落在阈值边缘，触发不稳定。
+ * 这里用 body{height:480px} 把内容高度钉死成画布高度的 80%，
+ * 让「悬停空白 → 框住整页 → 12% 填充染蓝整屏」这个缺陷**必然**复现。
+ */
+const SHORT_FIXTURE = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>T123 短文档</title>
+<style>html,body{margin:0}body{height:480px}</style></head>
+<body><h1>短文档</h1><p>正文只有一行，下方全是空白</p></body>
+</html>`;
+
 /** 检测用：注入到页面里跑的几何体检函数源码。 */
 const AUDIT_FN = `
 (() => {
-  const out = { truncated: [], zeroSize: [], outOfViewport: [], overlaps: [], covered: [], regionOverflow: [], regionButtons: {} };
+  const out = { truncated: [], zeroSize: [], outOfViewport: [], overlaps: [], covered: [], regionOverflow: [], bigTint: [], staleHover: [], regionButtons: {} };
   const TOL = 1;
   // 用 checkVisibility 判断「是否在渲染树中可见」—— 它会把祖先 display:none 一并算进去。
   // 早期版本只查元素自身的 computedStyle.display，导致面板收起时面板内元素全部被误判为
@@ -58,6 +73,16 @@ const AUDIT_FN = `
   const label = (el) => {
     const t = (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 24);
     return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + (t ? ' "' + t + '"' : '');
+  };
+  // 从 computedStyle 的 rgb()/rgba() 里取 alpha。
+  // ⚠️ 刻意不用正则：AUDIT_FN 整体是模板字符串，正则里的 \\s / \\d 必须写成双反斜杠，
+  //    写成单反斜杠会被 JS 当转义吞掉（\\s→s、\\d→d），正则静默失配、永远拿到 alpha=0。
+  //    T123 就是踩了这个坑：大面积着色检测本身写对了，却因为这一条恒定返回 0（检测器假阴性）。
+  const bgAlphaOf = (css) => {
+    if (!css || css.indexOf('(') < 0 || css.indexOf(')') < 0) return 0;
+    const parts = css.slice(css.indexOf('(') + 1, css.lastIndexOf(')')).split(',');
+    if (parts.length < 3) return 0;
+    return parts.length === 4 ? parseFloat(parts[3]) : 1;
   };
   const app = document.getElementById('ep-app');
   if (!app) return { fatal: 'no #ep-app' };
@@ -220,6 +245,59 @@ const AUDIT_FN = `
         over: { right: overRight > 0 ? overRight : 0, left: overLeft > 0 ? overLeft : 0 },
         regionW: Math.round(rr.width),
         parentInnerW: Math.round(inner.right - inner.left),
+      });
+    }
+  }
+
+  // 9. 大面积着色遮挡（T123 补）：几何检测永远抓不到「框位置没错、但整页被蒙了一层色」。
+  //    T123 的蓝框就是这样漏过去的 —— hover 框的位置/尺寸全对，只是框住了整个 body，
+  //    再叠上 12% 的强调色填充，整页内容就被染蓝了。
+  //    阈值 0.26 而非拍脑袋的 0.5：修复后填充上限是画布 1/4（geom.HOVER_FILL_MAX_RATIO），
+  //    高于 1/4 的着色在「修复后的代码」里不可能出现，因此 0.26 只会有漏报不会有误报。
+  //    （最初取 0.5 属于阈值过高，被场景 17 的实测证伪 —— 见 FINDINGS §6.1。）
+  out.bigTint = [];
+  const frame = document.getElementById('ep-canvas-frame');
+  if (frame && vis(frame)) {
+    const fr = frame.getBoundingClientRect();
+    const canvasArea = fr.width * fr.height;
+    const overlayEls = [
+      ['#ep-hover-box', document.getElementById('ep-hover-box')],
+      ['#ep-selected-box', document.getElementById('ep-selected-box')],
+      ...Array.from(document.querySelectorAll('.ep-selected-box-multi')).map((el, i) => ['.ep-selected-box-multi#' + i, el]),
+    ];
+    for (const [name, el] of overlayEls) {
+      if (!el || !vis(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (!canvasArea || !r.width || !r.height) continue;
+      const ratio = (r.width * r.height) / canvasArea;
+      const bg = getComputedStyle(el).backgroundColor;
+      const bgAlpha = bgAlphaOf(bg);
+      if (ratio > 0.26 && bgAlpha > 0.02) {
+        out.bigTint.push({
+          el: name,
+          ratio: Number(ratio.toFixed(3)),
+          bg,
+          rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+        });
+      }
+    }
+  }
+
+  // 10. 高亮滞留（T123 补）：指针已经不在画布上了，hover 高亮却还亮着。
+  //     场景需先写 window.__epAuditMouse = {x,y} 声明指针位置；未写则跳过本条。
+  //     修复前 CanvasHost 只有 iframe 内的 pointermove，没有 pointerleave，
+  //     指针移回顶栏调样式时高亮一直留在画布上，正好挡着要看的效果。
+  out.staleHover = [];
+  const mouse = window.__epAuditMouse;
+  if (mouse && frame && vis(frame)) {
+    const fr = frame.getBoundingClientRect();
+    const inside = mouse.x >= fr.left && mouse.x <= fr.right && mouse.y >= fr.top && mouse.y <= fr.bottom;
+    const hb = document.getElementById('ep-hover-box');
+    if (!inside && hb && vis(hb)) {
+      const r = hb.getBoundingClientRect();
+      out.staleHover.push({
+        mouse,
+        rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
       });
     }
   }
@@ -443,6 +521,46 @@ const SCENARIOS = [
       await page.waitForTimeout(250);
     },
   },
+  {
+    // T123 补：T122 的 16 个场景全是「点击 / 多选 / 拖拽」后的状态，**没有一个是纯悬停**，
+    // 而且几何检测看不见「位置没错但整页被染了色」。下面两个场景专打那个盲区，
+    // 且都是「在缺陷活着的那一刻取快照」：
+    //   17 —— 指针停在画布空白处不动（大面积着色，量 bigTint）
+    //   18 —— 悬停真实元素后把指针移出画布（高亮滞留，量 staleHover）
+    // 二者不能合并成一个场景：一旦指针移出，17 的着色会被 18 要测的撤销逻辑清掉。
+    id: '17-hover-blank-stay',
+    name: '悬停画布空白区并停住（大面积着色遮挡）',
+    open: false,
+    import: true,
+    fixture: SHORT_FIXTURE,
+    setup: async (page) => {
+      const fr = await page.locator('#ep-canvas-frame').boundingBox();
+      if (!fr) return;
+      const x = fr.x + fr.width - 40;
+      const y = fr.y + fr.height - 30;
+      await page.mouse.move(x, y);
+      await page.waitForTimeout(250);
+      // 告诉审计函数「指针此刻在哪」—— 见 AUDIT_FN 第 10 条
+      await page.evaluate((p) => { window.__epAuditMouse = p; }, { x, y });
+    },
+  },
+  {
+    id: '18-hover-then-leave',
+    name: '悬停元素后指针移出画布（高亮滞留）',
+    open: true,
+    import: true,
+    setup: async (page) => {
+      const fr = await page.locator('#ep-canvas-frame').boundingBox();
+      if (!fr) return;
+      // 先悬停一个真实元素，确保高亮曾经亮起
+      await page.mouse.move(fr.x + 80, fr.y + 120);
+      await page.waitForTimeout(200);
+      // 再移到顶栏（真实用户去调样式的动作）
+      await page.mouse.move(700, 20);
+      await page.waitForTimeout(250);
+      await page.evaluate((p) => { window.__epAuditMouse = p; }, { x: 700, y: 20 });
+    },
+  },
 ];
 
 // ── 起服务 ────────────────────────────────────────────────────────────
@@ -497,7 +615,8 @@ try {
 
       if (sc.import) {
         // 空态浮层里导入：导入成功后浮层自动收起，再按需展开面板
-        await page.locator('textarea').fill(FIXTURE);
+        const src = sc.fixture ?? FIXTURE;
+        await page.locator('textarea').fill(src);
         await page.getByRole('button', { name: '导入 HTML' }).click();
         await page.waitForTimeout(700);
         if (sc.open) {
@@ -510,7 +629,7 @@ try {
         }
       }
 
-      if (sc.setup) await withTimeout(sc.setup(page, FIXTURE), 20000, sc.id + ' setup');
+      if (sc.setup) await withTimeout(sc.setup(page, sc.fixture ?? FIXTURE), 20000, sc.id + ' setup');
 
       const audit = await page.evaluate(AUDIT_FN);
       rec.audit = audit;
@@ -531,7 +650,9 @@ try {
         (rec.audit.outOfViewport?.length || 0) +
         (rec.audit.overlaps?.length || 0) +
         (rec.audit.covered?.length || 0) +
-        (rec.audit.regionOverflow?.length || 0)
+        (rec.audit.regionOverflow?.length || 0) +
+        (rec.audit.bigTint?.length || 0) +
+        (rec.audit.staleHover?.length || 0)
       : -1;
     console.error(
       `  ${rec.ok ? 'OK  ' : 'FAIL'} ${sc.id.padEnd(26)} 异常项=${bad}${rec.error ? ' :: ' + rec.error : ''}`,
@@ -547,7 +668,7 @@ writeFileSync(reportPath, JSON.stringify(results, null, 2));
 console.log('REPORT ' + JSON.stringify({ reportPath, shotsDir: SHOTS, count: results.length }));
 for (const r of results) {
   console.log(
-    `${r.ok ? 'OK  ' : 'FAIL'} ${r.id} :: 截断=${r.audit?.truncated?.length ?? '-'} 零尺寸=${r.audit?.zeroSize?.length ?? '-'} 越界=${r.audit?.outOfViewport?.length ?? '-'} 重叠=${r.audit?.overlaps?.length ?? '-'} 遮挡=${r.audit?.covered?.length ?? '-'} 溢出=${r.audit?.regionOverflow?.length ?? '-'}${r.error ? ' err=' + r.error : ''}`,
+    `${r.ok ? 'OK  ' : 'FAIL'} ${r.id} :: 截断=${r.audit?.truncated?.length ?? '-'} 零尺寸=${r.audit?.zeroSize?.length ?? '-'} 越界=${r.audit?.outOfViewport?.length ?? '-'} 重叠=${r.audit?.overlaps?.length ?? '-'} 遮挡=${r.audit?.covered?.length ?? '-'} 溢出=${r.audit?.regionOverflow?.length ?? '-'} 大着色=${r.audit?.bigTint?.length ?? '-'} 滞留=${r.audit?.staleHover?.length ?? '-'}${r.error ? ' err=' + r.error : ''}`,
   );
 }
 process.exit(0);
