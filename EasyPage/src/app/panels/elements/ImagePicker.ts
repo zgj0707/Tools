@@ -52,15 +52,15 @@ export class ImagePicker {
   choose(): Promise<{ src: string; isPlaceholder: boolean } | null> {
     return new Promise((resolve) => {
       const modal = document.createElement('div');
+      // 遮罩层的定位 / 铺满 / 居中 / 层级 / 底色全部由 app.css 的 .ep-image-picker 承担。
       modal.className = 'ep-image-picker';
-      modal.style.cssText =
-        'position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:9999;';
       const box = document.createElement('div');
-      box.style.cssText = 'background:#fff;padding:16px;border-radius:8px;width:280px;';
+      // 卡片无对应类名：色值 / 内边距 / 圆角改用 token；width 属布局尺寸，保留。
+      box.style.cssText = 'background:var(--ep-surface);padding:var(--ep-sp-4);border-radius:var(--ep-r-md);width:280px;';
       const url = document.createElement('input');
       url.type = 'text';
       url.placeholder = 'https://… 或 data:…';
-      url.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:8px;';
+      url.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:var(--ep-sp-2);';
       box.appendChild(url);
 
       const close = (v: { src: string; isPlaceholder: boolean } | null) => {
@@ -70,7 +70,7 @@ export class ImagePicker {
 
       const urlBtn = document.createElement('button');
       urlBtn.textContent = '从 URL';
-      urlBtn.style.cssText = 'display:block;width:100%;margin-bottom:6px;';
+      urlBtn.style.cssText = 'display:block;width:100%;margin-bottom:var(--ep-sp-2);';
       urlBtn.addEventListener('click', () => {
         const s = url.value.trim();
         if (/^(https?:|data:)/i.test(s)) close({ src: s, isPlaceholder: false });
@@ -78,12 +78,12 @@ export class ImagePicker {
 
       const phBtn = document.createElement('button');
       phBtn.textContent = '占位图';
-      phBtn.style.cssText = 'display:block;width:100%;margin-bottom:6px;';
+      phBtn.style.cssText = 'display:block;width:100%;margin-bottom:var(--ep-sp-2);';
       phBtn.addEventListener('click', () => close({ src: PLACEHOLDER_IMG, isPlaceholder: true }));
 
       const localBtn = document.createElement('button');
       localBtn.textContent = '本地选择';
-      localBtn.style.cssText = 'display:block;width:100%;margin-bottom:6px;';
+      localBtn.style.cssText = 'display:block;width:100%;margin-bottom:var(--ep-sp-2);';
       localBtn.addEventListener('click', async () => {
         const s = await this.pickLocal();
         close(s ? { src: s, isPlaceholder: false } : null);

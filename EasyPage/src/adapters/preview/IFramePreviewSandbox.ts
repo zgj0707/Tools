@@ -26,9 +26,9 @@ export class IFramePreviewSandbox implements PreviewSandbox {
     // 安全红线：逐字 "allow-scripts"，绝不含 allow-same-origin
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.srcdoc = injectBridge(html);
+    // 尺寸与编辑帧一致，保留内联；描边 / 圆角 / 底色交给 style/app.css 的 #ep-preview-frame
     frame.style.width = '100%';
     frame.style.height = '600px';
-    frame.style.border = '1px solid #ccc';
     this.container.appendChild(frame);
     this.frame = frame;
 

@@ -29,11 +29,10 @@ export class LayersPanel {
 
   constructor(host: HTMLElement) {
     this.root = document.createElement('aside');
+    // 宽度 / 内边距 / 分隔线 / max-height / overflow 由 style/app.css 的 .ep-layers 承担
     this.root.className = 'ep-layers';
-    this.root.style.cssText = 'width:200px;padding:8px;border-right:1px solid #ddd;box-sizing:border-box;overflow:auto;max-height:600px;';
     const title = document.createElement('h3');
     title.textContent = '图层';
-    title.style.margin = '0 0 8px';
     this.root.appendChild(title);
     this.listEl = document.createElement('div');
     this.listEl.className = 'ep-layer-list';
@@ -71,8 +70,6 @@ export class LayersPanel {
   private appendMore(parent: Element, hidden: number, shown: number): void {
     const row = document.createElement('div');
     row.className = 'ep-layer-more';
-    row.style.cssText = 'font-size:11px;color:#888;padding:2px 4px;cursor:pointer;';
-    row.style.paddingLeft = '24px';
     row.textContent = `… 显示更多 ${hidden} 个`;
     row.addEventListener('click', () => {
       this.overrides.set(parent, shown * 2);
@@ -86,14 +83,15 @@ export class LayersPanel {
     const rowEl = document.createElement('div');
     rowEl.className = 'ep-layer-row';
     rowEl.dataset.tag = el.tagName.toLowerCase();
-    rowEl.style.cssText = 'display:flex;align-items:center;gap:3px;font-size:12px;padding:2px 4px;cursor:pointer;';
+    // 缩进是树形结构的几何结果，保留内联
     rowEl.style.paddingLeft = `${row.depth * 14 + 4}px`;
-    if (el === this.selected) rowEl.style.background = '#dbeafe';
+    // 选中行高亮：原为内联 #dbeafe，现统一到 token
+    // （.ep-layer-row--selected → var(--ep-focus-bg) = #EDF3FF，测试已同步）
+    rowEl.classList.toggle('ep-layer-row--selected', el === this.selected);
 
     // 折叠开关
     const toggle = document.createElement('span');
     toggle.className = 'ep-layer-toggle';
-    toggle.style.cssText = 'width:12px;text-align:center;flex:none;cursor:pointer;user-select:none;';
     if (row.hasChildren) {
       toggle.textContent = this.expanded.has(el) ? '▾' : '▸';
       toggle.addEventListener('click', (e) => {
@@ -109,9 +107,6 @@ export class LayersPanel {
 
     const name = document.createElement('span');
     name.textContent = label(el);
-    name.style.flex = '1';
-    rowEl.style.overflow = 'hidden';
-    rowEl.style.whiteSpace = 'nowrap';
     rowEl.addEventListener('click', () => this.hooks.select(el));
     rowEl.appendChild(name);
 
@@ -124,7 +119,6 @@ export class LayersPanel {
       b.className = 'ep-layer-reorder';
       b.dataset.dir = String(dir);
       b.textContent = txt;
-      b.style.cssText = 'width:16px;height:16px;padding:0;font-size:9px;flex:none;';
       b.disabled = disabled;
       b.addEventListener('click', (e) => { e.stopPropagation(); this.hooks.reorder(el, dir); });
       rowEl.appendChild(b);
@@ -143,8 +137,10 @@ export class LayersPanel {
 
     const hideBtn = document.createElement('button');
     const hidden = (el as HTMLElement).style.display === 'none';
+    // 原先无类名、纯内联；补 .ep-layer-hide 供 CSS 接管
+    // （e2e 按 👁 / 🚫 文本定位这个按钮，加类名不影响）
+    hideBtn.className = 'ep-layer-hide';
     hideBtn.textContent = hidden ? '🚫' : '👁';
-    hideBtn.style.cssText = 'width:18px;height:18px;padding:0;font-size:10px;flex:none;';
     hideBtn.addEventListener('click', (e) => { e.stopPropagation(); this.hooks.toggleHide(el); });
     rowEl.appendChild(hideBtn);
 

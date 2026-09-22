@@ -1,3 +1,5 @@
+import './app/style/tokens.css';
+import './app/style/app.css';
 import { EP } from './constants';
 import { createApp } from './platforms/web/composition';
 import { t } from './app/i18n/zh-CN';

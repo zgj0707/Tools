@@ -28,8 +28,7 @@ export class DecorationSection {
 
     const title = document.createElement('h4');
     title.textContent = '外观';
-    title.style.cssText = 'margin:8px 0 4px;font-size:12px;';
-    this.root.appendChild(title);
+    this.root.appendChild(title); // 外观由 app.css 的 .ep-deco > h4 承担
 
     this.root.appendChild(this.borderWidth.el);
     this.root.appendChild(this.borderStyle.el);
@@ -43,7 +42,6 @@ export class DecorationSection {
     this.shadowToggle.type = 'checkbox';
     const tlab = document.createElement('label');
     tlab.textContent = '无阴影';
-    tlab.style.fontSize = '12px';
     trow.appendChild(this.shadowToggle);
     trow.appendChild(tlab);
     this.root.appendChild(trow);

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-22T05:06:45.462Z",
-  "durationMs": 14708,
+  "generatedAt": "2026-09-22T06:20:09.143Z",
+  "durationMs": 15523,
   "mode": "playwright-ui-ops",
   "definitions": {
     "note": "本报告由 Playwright 驱动真实 UI 的固定操作脚本取数；static 字段为原有 happy-dom 静态能力，不参与门禁判定。",
@@ -206,7 +206,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 287
         },
         "preset": {
@@ -317,7 +317,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 126
         },
         "preset": {
@@ -428,7 +428,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 84
         },
         "preset": {
@@ -539,7 +539,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 305
         },
         "preset": {
@@ -650,7 +650,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 21
         },
         "preset": {
@@ -761,7 +761,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 84
         },
         "preset": {
@@ -872,7 +872,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 84
         },
         "preset": {
@@ -983,7 +983,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 21
         },
         "preset": {
@@ -1094,7 +1094,7 @@
           "height": "",
           "transform": "translate(10px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 95
         },
         "preset": {
@@ -1148,7 +1148,7 @@
         },
         "move": {
           "ok": true,
-          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+          "detail": "transform: \"translate(4px, 8px)\"（期望含位移方向 10,8）"
         },
         "resize": {
           "ok": true,
@@ -1168,13 +1168,13 @@
         },
         "export": {
           "ok": true,
-          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=657"
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=656"
         }
       },
       "failReasons": [],
       "exportDiff": {
         "hasExport": true,
-        "exportedLength": 657,
+        "exportedLength": 656,
         "expectedChanges": {
           "hasMarker": true,
           "hasTransform": true,
@@ -1203,15 +1203,15 @@
         "moved": {
           "width": "",
           "height": "",
-          "transform": "translate(10px, 8px)",
+          "transform": "translate(4px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
-          "rectW": 286,
+          "rectW": 284,
           "rectH": 170
         },
         "preset": {
           "width": "120px",
           "height": "80px",
-          "transform": "translate(10px, 8px)",
+          "transform": "translate(4px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
           "rectW": 120,
           "rectH": 80
@@ -1219,7 +1219,7 @@
         "resized": {
           "width": "160px",
           "height": "110px",
-          "transform": "translate(10px, 8px)",
+          "transform": "translate(4px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
           "rectW": 160,
           "rectH": 110
@@ -1227,7 +1227,7 @@
         "undo": {
           "width": "120px",
           "height": "80px",
-          "transform": "translate(10px, 8px)",
+          "transform": "translate(4px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
           "rectW": 120,
           "rectH": 80
@@ -1235,7 +1235,7 @@
         "final": {
           "width": "160px",
           "height": "110px",
-          "transform": "translate(10px, 8px)",
+          "transform": "translate(4px, 8px)",
           "backgroundColor": "rgb(18, 52, 86)",
           "rectW": 160,
           "rectH": 110

@@ -21,10 +21,10 @@ export class CanvasHost {
     this.frame.id = EP.CANVAS_FRAME;
     // 安全红线：逐字 "allow-same-origin"，绝不加 allow-scripts
     this.frame.setAttribute('sandbox', 'allow-same-origin');
+    // 尺寸是几何红线（e2e 拖拽 / 缩放 / 选中框对齐的基准），保留内联；
+    // 描边 / 圆角 / 底色 / display 由 style/app.css 的 #ep-canvas-frame 承担。
     this.frame.style.width = '100%';
     this.frame.style.height = '600px';
-    this.frame.style.border = '1px solid #ccc';
-    this.frame.style.display = 'block';
     host.appendChild(this.frame);
 
     this.overlay = document.createElement('div');

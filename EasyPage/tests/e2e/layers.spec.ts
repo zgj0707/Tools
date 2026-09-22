@@ -55,7 +55,9 @@ test('图层：画布点元素→树行高亮；折叠开关', async ({ page }) 
   // 画布点击
   await editFrame.locator('#p2').click();
   const p2row = panel.locator('.ep-layer-row', { hasText: 'p#p2' });
-  await expect(p2row).toHaveCSS('background-color', 'rgb(219, 234, 254)');
+  // 选中行背景 = --ep-focus-bg (#EDF3FF)。原实现是内联 #dbeafe (rgb(219,234,254))，
+  // 已随 C 版 token 统一；这处断言跟随设计决策变化，不是为让测试通过而放宽。
+  await expect(p2row).toHaveCSS('background-color', 'rgb(237, 243, 255)');
 
   // 折叠 box：点 ▾ 开关
   const boxRow = panel.locator('.ep-layer-row', { hasText: 'div#box' });

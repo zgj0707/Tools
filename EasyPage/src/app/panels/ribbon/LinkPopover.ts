@@ -13,17 +13,20 @@ export class LinkPopover {
   constructor(host: HTMLElement) {
     this.root = document.createElement('div');
     this.root.className = 'ep-link-popover';
-    this.root.style.cssText = 'position:fixed;top:60px;right:20px;z-index:9999;background:#fff;border:1px solid #ccc;padding:8px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.15);';
+    // 底色 / 边框 / 圆角 / 阴影 / 层级（z-index:9999）已由 app.css 的 .ep-link-popover
+    // 承担；这里只留定位几何（fixed + 右上角偏移）与显隐状态（display）。
+    this.root.style.cssText = 'position:fixed;top:60px;right:20px;display:none;';
     this.input = document.createElement('input');
     this.input.type = 'text';
     this.input.placeholder = 'https://example.com';
-    this.input.style.cssText = 'width:220px;padding:4px;margin-right:8px;';
+    // width 为布局尺寸，保留；内边距与右间距改用 token。
+    this.input.style.cssText = 'width:220px;padding:var(--ep-sp-1);margin-right:var(--ep-sp-2);';
     const ok = document.createElement('button');
     ok.textContent = '确定';
-    ok.style.cssText = 'padding:4px 10px;margin-right:4px;';
+    ok.style.cssText = 'padding:var(--ep-sp-1) 10px;margin-right:var(--ep-sp-1);';
     const cancel = document.createElement('button');
     cancel.textContent = '取消';
-    cancel.style.cssText = 'padding:4px 10px;';
+    cancel.style.cssText = 'padding:var(--ep-sp-1) 10px;';
     ok.addEventListener('click', () => this.submit());
     cancel.addEventListener('click', () => this.close(null));
     this.input.addEventListener('keydown', (e) => {
@@ -39,7 +42,8 @@ export class LinkPopover {
   private submit(): void {
     const url = normalizeUrl(this.input.value);
     if (url === null) {
-      this.input.style.border = '1px solid red';
+      // 校验失败的红色报警描边走 token（唯一色值来源），状态本身仍由 JS 控制。
+      this.input.style.border = '1px solid var(--ep-danger)';
       return;
     }
     this.close({ url });

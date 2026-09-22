@@ -10,14 +10,8 @@ export interface FieldHandle {
 function wrap(label: string, control: HTMLElement): HTMLElement {
   const row = document.createElement('div');
   row.className = 'ep-field';
-  row.style.display = 'flex';
-  row.style.alignItems = 'center';
-  row.style.gap = '6px';
-  row.style.marginBottom = '6px';
   const lab = document.createElement('label');
   lab.textContent = label;
-  lab.style.width = '72px';
-  lab.style.fontSize = '12px';
   row.appendChild(lab);
   row.appendChild(control);
   return row;
@@ -29,8 +23,6 @@ export function makeSelect(
   mixedText: string,
 ): FieldHandle {
   const sel = document.createElement('select');
-  sel.style.flex = '1';
-  sel.style.fontSize = '12px';
   for (const o of options) {
     const opt = document.createElement('option');
     opt.value = o.value;
@@ -59,8 +51,6 @@ export function makeSelect(
 export function makeColor(label: string): FieldHandle {
   const input = document.createElement('input');
   input.type = 'color';
-  input.style.flex = '1';
-  input.style.fontSize = '12px';
   const row = wrap(label, input);
   return {
     el: row,
@@ -82,8 +72,6 @@ export function makeNumber(label: string, min: number, max: number, step: number
   input.min = String(min);
   input.max = String(max);
   input.step = String(step);
-  input.style.flex = '1';
-  input.style.fontSize = '12px';
   const row = wrap(label, input);
   let last = input.value;
   return {
@@ -107,8 +95,6 @@ export function makeNumber(label: string, min: number, max: number, step: number
 
 export function makeButton(label: string): FieldHandle & { click(cb: () => void): void } {  const btn = document.createElement('button');
   btn.textContent = label;
-  btn.style.flex = '1';
-  btn.style.fontSize = '12px';
   const row = wrap('', btn);
   return {
     el: row,
@@ -127,8 +113,6 @@ export function makeText(label: string, placeholder: string): FieldHandle {
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = placeholder;
-  input.style.flex = '1';
-  input.style.fontSize = '12px';
   const row = wrap(label, input);
   return {
     el: row,

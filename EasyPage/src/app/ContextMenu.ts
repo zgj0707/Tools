@@ -23,13 +23,16 @@ export class ContextMenu {
   show(x: number, y: number, items: ContextMenuItem[], hooks: ContextMenuHooks): void {
     this.hide();
     const el = document.createElement('div');
+    // 视觉（定位方式 / 层级 / 最小宽 / 内边距 / 边框 / 圆角 / 底色 / 阴影）全部由
+    // app.css 的 .ep-context-menu 承担，此处只保留 left/top 这两个坐标计算值。
     el.className = 'ep-context-menu';
-    el.style.cssText = 'position:fixed;min-width:160px;background:#fff;border:1px solid #ccc;box-shadow:2px 2px 8px rgba(0,0,0,0.2);z-index:9999;padding:4px 0;font-size:13px;';
     for (const item of items) {
       const row = document.createElement('div');
       row.className = 'ep-menu-item';
       row.textContent = item.label;
-      row.style.cssText = `padding:6px 12px;cursor:${item.enabled ? 'pointer' : 'default'};color:${item.enabled ? '#222' : '#aaa'};`;
+      // 视觉（内边距 / 字号 / 配色 / 光标）由 .ep-menu-item 与
+      // .ep-menu-item[data-disabled='true'] 承担，这里只标注启用态供 CSS 选择。
+      row.dataset.disabled = item.enabled ? 'false' : 'true';
       if (item.enabled) {
         row.addEventListener('click', () => {
           hooks.onPick(item.id);

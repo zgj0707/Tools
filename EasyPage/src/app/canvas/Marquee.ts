@@ -17,7 +17,8 @@ export class Marquee {
     this.root.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:40;';
     this.box = document.createElement('div');
     this.box.className = 'ep-marquee';
-    this.box.style.cssText = 'position:absolute;border:1px solid #4285f4;background:rgba(66,133,244,0.15);display:none;';
+    // 描边 / 填充交给 style/app.css 的 .ep-marquee
+    this.box.style.cssText = 'position:absolute;display:none;';
     this.root.appendChild(this.box);
     host.appendChild(this.root);
   }

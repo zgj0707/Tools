@@ -16,8 +16,7 @@ export class BoxModelSection {
 
     const title = document.createElement('h4');
     title.textContent = '盒模型';
-    title.style.cssText = 'margin:8px 0 4px;font-size:12px;';
-    this.root.appendChild(title);
+    this.root.appendChild(title); // 外观由 app.css 的 .ep-box > h4 承担
 
     const defs: Array<[string, string, number, number]> = [
       ['width', 'width', 0, 5000],

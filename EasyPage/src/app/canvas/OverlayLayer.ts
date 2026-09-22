@@ -7,12 +7,13 @@ import type { ResizeDirection } from '../../core/interaction/resize';
 const HANDLE_SIZE = 9;
 const DIRECTIONS: ResizeDirection[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
-function makeBox(id: string, borderColor: string): HTMLDivElement {
+// 位置 / 尺寸 / 显隐留在内联（几何计算的结果，也是 e2e 的断言对象）；
+// 描边与填充交给 style/app.css 的 #ep-hover-box / #ep-selected-box。
+function makeBox(id: string): HTMLDivElement {
   const box = document.createElement('div');
   box.id = id;
   box.style.position = 'absolute';
   box.style.pointerEvents = 'none';
-  box.style.border = `2px solid ${borderColor}`;
   box.style.boxSizing = 'border-box';
   box.style.display = 'none';
   box.style.zIndex = '20';
@@ -37,21 +38,18 @@ export class OverlayLayer {
     this.root.style.pointerEvents = 'none';
     this.root.style.zIndex = '10';
 
-    this.hoverBox = makeBox('ep-hover-box', 'rgba(66, 133, 244, 0.9)');
-    this.hoverBox.style.background = 'rgba(66, 133, 244, 0.12)';
-    this.selectedBox = makeBox('ep-selected-box', 'rgba(230, 81, 0, 0.95)');
+    this.hoverBox = makeBox('ep-hover-box');
+    this.selectedBox = makeBox('ep-selected-box');
     this.lockBadge = document.createElement('div');
     this.lockBadge.className = 'ep-lock-badge';
     this.lockBadge.textContent = '🔒';
+    // 尺寸参与定位偏移计算（setSelected 里的 bx-8 / by-8），保留内联；
+    // 配色 / 圆角由 style/app.css 的 .ep-lock-badge 承担。
     this.lockBadge.style.position = 'absolute';
     this.lockBadge.style.width = '14px';
     this.lockBadge.style.height = '14px';
     this.lockBadge.style.fontSize = '10px';
     this.lockBadge.style.lineHeight = '14px';
-    this.lockBadge.style.textAlign = 'center';
-    this.lockBadge.style.background = '#fff';
-    this.lockBadge.style.border = '1px solid #999';
-    this.lockBadge.style.borderRadius = '2px';
     this.lockBadge.style.display = 'none';
     this.lockBadge.style.zIndex = '35';
     this.root.appendChild(this.hoverBox);
@@ -64,8 +62,7 @@ export class OverlayLayer {
       h.style.position = 'absolute';
       h.style.width = `${HANDLE_SIZE}px`;
       h.style.height = `${HANDLE_SIZE}px`;
-      h.style.background = 'rgba(230, 81, 0, 0.85)';
-      h.style.border = '1px solid #fff';
+      // 配色由 style/app.css 的 #ep-overlay-root [data-dir] 提供（与选中框同色系）
       h.style.boxSizing = 'border-box';
       h.style.display = 'none';
       h.style.pointerEvents = 'auto';
@@ -136,7 +133,8 @@ export class OverlayLayer {
       const box = boxes[i]!;
       const div = document.createElement('div');
       div.className = 'ep-selected-box-multi';
-      div.style.cssText = 'position:absolute;border:2px solid rgba(230,81,0,0.95);box-sizing:border-box;pointer-events:none;z-index:20;';
+      // 描边由 style/app.css 的 .ep-selected-box-multi 提供
+      div.style.cssText = 'position:absolute;box-sizing:border-box;pointer-events:none;z-index:20;';
       div.style.left = (box.left - origin.left) + 'px';
       div.style.top = (box.top - origin.top) + 'px';
       div.style.width = box.width + 'px';

@@ -40,14 +40,9 @@ export class StylePanel {
     this.deps = deps;
     this.root = document.createElement('aside');
     this.root.className = 'ep-panel';
-    this.root.style.width = '220px';
-    this.root.style.padding = '8px';
-    this.root.style.borderLeft = '1px solid #ddd';
-    this.root.style.boxSizing = 'border-box';
 
     const title = document.createElement('h3');
     title.textContent = t('panel.style.title');
-    title.style.margin = '0 0 8px';
     this.root.appendChild(title);
 
     this.root.appendChild(this.fontFamily.el);
@@ -60,7 +55,6 @@ export class StylePanel {
     this.root.appendChild(this.letterSpacing.el);
 
     this.notice.className = 'ep-notice';
-    this.notice.style.cssText = 'font-size:12px;color:#c0392b;margin:4px 0;display:none;';
     this.root.appendChild(this.notice);
     this.root.appendChild(this.linkUrl.el);
 
@@ -143,7 +137,8 @@ export class StylePanel {
 
   private showNotice(msg: string): void {
     if (msg) {
-      this.notice.style.display = '';
+      // .ep-notice 默认 display:none（见 app.css），显形须显式切 block
+      this.notice.style.display = 'block';
       this.notice.textContent = msg;
     } else {
       this.notice.style.display = 'none';

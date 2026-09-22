@@ -10,40 +10,36 @@ export class ElementsPanel {
 
   constructor(host: HTMLElement) {
     this.root = document.createElement('aside');
+    // 宽度 / 内边距 / 分隔线由 style/app.css 的 .ep-elements 承担
     this.root.className = 'ep-elements';
-    this.root.style.width = '160px';
-    this.root.style.padding = '8px';
-    this.root.style.borderRight = '1px solid #ddd';
-    this.root.style.boxSizing = 'border-box';
 
     const title = document.createElement('h3');
     title.textContent = '插入';
-    title.style.margin = '0 0 8px';
     this.root.appendChild(title);
 
     for (const kind of Object.keys(KIND_LABELS) as ElementKind[]) {
       const btn = document.createElement('button');
+      btn.className = 'ep-btn ep-btn--block';
       btn.textContent = KIND_LABELS[kind];
-      btn.style.cssText = 'display:block;width:100%;margin-bottom:4px;font-size:12px;';
       btn.addEventListener('click', () => this.onInsertCb?.(kind));
       this.root.appendChild(btn);
     }
 
     const del = document.createElement('button');
+    del.className = 'ep-btn ep-btn--block ep-btn--danger';
     del.textContent = '删除选中';
-    del.style.cssText = 'display:block;width:100%;margin-top:8px;font-size:12px;';
     del.addEventListener('click', () => this.onDeleteCb?.());
     this.root.appendChild(del);
 
     this.ulBtn = document.createElement('button');
+    this.ulBtn.className = 'ep-btn ep-btn--block';
     this.ulBtn.textContent = '项目符号列表';
-    this.ulBtn.style.cssText = 'display:block;width:100%;margin-top:8px;font-size:12px;';
     this.ulBtn.addEventListener('click', () => this.onListCb?.('ul'));
     this.root.appendChild(this.ulBtn);
 
     this.olBtn = document.createElement('button');
+    this.olBtn.className = 'ep-btn ep-btn--block';
     this.olBtn.textContent = '编号列表';
-    this.olBtn.style.cssText = 'display:block;width:100%;margin-top:4px;font-size:12px;';
     this.olBtn.addEventListener('click', () => this.onListCb?.('ol'));
     this.root.appendChild(this.olBtn);
 

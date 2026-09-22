@@ -86,20 +86,26 @@ export class App {
 
   mount(): void {
     this.root.textContent = '';
-    this.root.style.display = 'flex';
-    this.root.style.flexDirection = 'column';
-    this.root.style.gap = '8px';
-    this.root.style.padding = '8px';
 
+    // ── 顶栏（C 版：品牌 + 一级动作平铺，无描边无底色，hover 才显形）──
+    // ⚠️ 品牌节点必须保持 <h1> 标签。tests/e2e 有 20+ 处
+    //    `page.locator('h1').first().click()`，其真实意图是「点一下画布外，
+    //    把键盘焦点从 iframe 收回主文档」，而 page.locator 不穿透 iframe，
+    //    所以命中这个外壳 h1 而非画布内的 h1。改标签名会让这批测试集体失败。
+    //    （技术债：这个隐式耦合应改为显式锚点，见提交说明。）
+    const topbar = document.createElement('div');
+    topbar.className = 'ep-topbar';
+    const brand = document.createElement('div');
+    brand.className = 'ep-topbar__brand';
     const title = document.createElement('h1');
+    title.className = 'ep-topbar__name';
     title.textContent = t('app.title');
-    title.style.margin = '0';
-    this.root.appendChild(title);
+    brand.appendChild(title);
+    topbar.appendChild(brand);
 
-    // 工具栏
+    // 工具栏（一级动作）
     const toolbar = document.createElement('div');
-    toolbar.style.display = 'flex';
-    toolbar.style.gap = '8px';
+    toolbar.className = 'ep-toolbar';
 
     const importBtn = this.makeButton(t('button.import'), () => this.importFromTextarea());
     const blankBtn = this.makeButton(t('button.blank'), () => this.loadBlank());
@@ -110,12 +116,12 @@ export class App {
     const painterBtn = this.makeButton(t('button.formatPainter'), () => this.formatPainter.startOnce());
     painterBtn.addEventListener('dblclick', () => this.formatPainter.startContinuous());
     toolbar.append(importBtn, blankBtn, previewBtn, exportBtn, copyBtn, resetBtn, painterBtn);
-    this.root.appendChild(toolbar);
+    topbar.appendChild(toolbar);
+    this.root.appendChild(topbar);
 
     // 对齐/分布按钮组（T113）
     const alignRow = document.createElement('div');
-    alignRow.style.display = 'flex';
-    alignRow.style.gap = '4px';
+    alignRow.className = 'ep-alignbar';
     const mkAlign = (label: string, type: AlignType) => {
       const b = this.makeButton(label, () => this.doAlign(type));
       b.dataset.align = type;
@@ -130,18 +136,17 @@ export class App {
 
     // 粘贴 + 文件
     const pasteRow = document.createElement('div');
-    pasteRow.style.display = 'flex';
-    pasteRow.style.gap = '8px';
+    pasteRow.className = 'ep-import';
 
     this.textarea = document.createElement('textarea');
+    this.textarea.className = 'ep-import__textarea';
     this.textarea.placeholder = t('placeholder.pasteHtml');
-    this.textarea.style.flex = '1';
-    this.textarea.style.minHeight = '80px';
     pasteRow.appendChild(this.textarea);
 
     this.fileInput = document.createElement('input');
     this.fileInput.type = 'file';
     this.fileInput.accept = '.html,text/html';
+    this.fileInput.className = 'ep-import__file';
     this.fileInput.addEventListener('change', () => this.importFromFile());
     pasteRow.appendChild(this.fileInput);
     this.root.appendChild(pasteRow);
@@ -149,19 +154,16 @@ export class App {
     // 草稿区（T117）：有草稿时渲染「继续 / 删除」，无草稿只留占位。
     // 注意：这一段曾在重构中丢失（draftRow 只声明未挂载），导致 Ctrl+S 存下的草稿
     // 在重新打开后没有任何恢复入口 —— 这是「草稿续开」失效的根因。
+    // 类名原为 ep__draft-row（双下划线，与 EP.CLASS_PREFIX 的 BEM 约定不符），已统一。
     this.draftRow = document.createElement('div');
     this.draftRow.id = 'ep-draft-row';
-    this.draftRow.className = 'ep__draft-row';
-    this.draftRow.style.display = 'flex';
-    this.draftRow.style.gap = '8px';
-    this.draftRow.style.alignItems = 'center';
+    this.draftRow.className = 'ep-draft-row';
     this.root.appendChild(this.draftRow);
     this.refreshDraftList();
 
     // 左元素面板 +（编辑 iframe + overlay）+ 右侧样式面板
     const outerRow = document.createElement('div');
-    outerRow.style.display = 'flex';
-    outerRow.style.alignItems = 'flex-start';
+    outerRow.className = 'ep-main';
     this.root.appendChild(outerRow);
     this.elementsPanel = new ElementsPanel(outerRow);
     this.elementsPanel.onInsert((kind) => this.insertElement(kind));
@@ -245,6 +247,7 @@ export class App {
 
   private makeButton(label: string, onClick: () => void): HTMLButtonElement {
     const btn = document.createElement('button');
+    btn.className = 'ep-btn';
     btn.textContent = label;
     btn.addEventListener('click', () => {
       try {

@@ -1,0 +1,572 @@
+/* ============================================================================
+ * 易页 EasyPage · 外壳与控件样式（方案 C · Canvas First）
+ * ----------------------------------------------------------------------------
+ * 本文件是项目里唯一的 CSS。
+ *
+ * 【分工铁律】CSS 管「视觉」，JS 内联管「几何与行为」。
+ *   - 颜色 / 边框 / 圆角 / 阴影 / 字体 / 静态盒模型  → 本文件
+ *   - 坐标 / 尺寸 / display 切换 / transform（几何计算或状态驱动）→ JS 内联
+ *   理由：画布覆盖层的位置、手柄尺寸、拖拽位移都参与 e2e 几何断言，
+ *   把它们从 JS 搬进 CSS 会让「改样式」与「改行为」耦合，回归风险不可控。
+ *
+ * 【不可改动的选择器】（e2e 与 qa 度量依赖，改名即回归）
+ *   #ep-app #ep-canvas-frame #ep-preview-frame #ep-overlay-root
+ *   #ep-hover-box #ep-selected-box #ep-draft-row #ep-breadcrumb
+ *   .ep-toast .ep-layer-row .ep-layer-reorder .ep-context-menu
+ *   [data-dir]（8 个缩放手柄）  [data-align]（8 个对齐按钮）
+ * ==========================================================================*/
+
+/* ============ 0. reset ============ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: var(--ep-font);
+  font-size: var(--ep-fs-13);
+  line-height: 1.5;
+  color: var(--ep-ink);
+  background: var(--ep-bg);
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ============ 1. 应用外壳 ============ */
+/* 注意：此处刻意不设 gap —— 各区块用自身 padding 控制间距，
+   以免改变左右面板与画布之间的横向尺寸（画布宽 = 100% 撑满剩余空间）。 */
+#ep-app {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 100%;
+  background: var(--ep-bg);
+}
+
+/* ---- 顶栏：一级动作平铺，无描边无底色，hover 才显形 ---- */
+.ep-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-3);
+  height: var(--ep-topbar-h);
+  padding: 0 var(--ep-sp-4);
+  background: var(--ep-surface);
+  border-bottom: 1px solid var(--ep-line);
+  position: relative;
+  z-index: 60;
+}
+.ep-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  flex: 0 0 auto;
+  /* 品牌与动作组之间拉一条极浅竖线，替代分组标题 */
+  padding-right: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+}
+.ep-topbar__name {
+  margin: 0;
+  font-size: var(--ep-fs-13);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ep-toolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+}
+
+/* ---- 对齐 / 分布条 ---- */
+.ep-alignbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+}
+.ep-alignbar::before {
+  content: '对齐';
+  flex: 0 0 auto;
+  margin-right: var(--ep-sp-1);
+  font-size: var(--ep-fs-11);
+  color: var(--ep-ink-3);
+  letter-spacing: 0.04em;
+}
+
+/* ---- 导入区 ---- */
+.ep-import {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ep-sp-2);
+  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+}
+.ep-import__textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--ep-sp-2) var(--ep-sp-3);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface);
+  font-size: var(--ep-fs-12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.ep-import__textarea::placeholder {
+  color: var(--ep-ink-3);
+}
+.ep-import__textarea:focus {
+  outline: none;
+  border-color: var(--ep-accent);
+  box-shadow: 0 0 0 3px var(--ep-accent-soft);
+}
+.ep-import__file {
+  flex: 0 0 auto;
+  max-width: 210px;
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+.ep-import__file::file-selector-button {
+  height: var(--ep-control-h);
+  margin-right: var(--ep-sp-2);
+  padding: 0 var(--ep-sp-3);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-sm);
+  background: var(--ep-surface);
+  color: var(--ep-ink);
+  font-size: var(--ep-fs-12);
+  cursor: pointer;
+}
+.ep-import__file::file-selector-button:hover {
+  background: var(--ep-surface-3);
+}
+
+/* ---- 草稿区 ---- */
+.ep-draft-row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+
+/* ---- 主区：左面板 + 画布 + 右面板（gap 恒为 0，宽度由面板自身 border 分隔）---- */
+.ep-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  padding: var(--ep-sp-3) var(--ep-sp-4) 0;
+  min-width: 0;
+}
+
+/* ---- 底部面包屑 ---- */
+.ep-statusbar {
+  flex: 0 0 auto;
+  min-height: 1.5em;
+  padding: var(--ep-sp-2) var(--ep-sp-4) var(--ep-sp-3);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+
+/* ---- toast：底部居中深色胶囊 ---- */
+.ep-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--ep-sp-5);
+  transform: translateX(-50%);
+  z-index: 9999;
+  max-width: 60%;
+  padding: var(--ep-sp-2) var(--ep-sp-4);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-toast-bg);
+  color: var(--ep-toast-ink);
+  font-size: var(--ep-fs-12);
+  box-shadow: var(--ep-sh-2);
+  pointer-events: none;
+}
+
+/* ============ 2. 通用控件 ============ */
+.ep-btn {
+  flex: 0 0 auto;
+  height: var(--ep-control-h);
+  padding: 0 var(--ep-sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--ep-r-sm);
+  background: transparent;
+  color: var(--ep-ink-2);
+  font-size: var(--ep-fs-12);
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ep-btn:hover:not([disabled]) {
+  background: var(--ep-surface-3);
+  color: var(--ep-ink);
+}
+.ep-btn:active:not([disabled]) {
+  background: var(--ep-line);
+}
+.ep-btn:focus-visible {
+  outline: 2px solid var(--ep-accent);
+  outline-offset: 1px;
+}
+.ep-btn[disabled] {
+  color: var(--ep-ink-3);
+  cursor: not-allowed;
+}
+/* 全宽块级（插入面板 / 样式面板内的动作按钮） */
+.ep-btn--block {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+/* 插入面板：动作按钮纵向堆叠；「删除选中」与上方插入组拉开一档 */
+.ep-elements .ep-btn--block {
+  margin-bottom: var(--ep-sp-1);
+}
+.ep-elements .ep-btn--danger {
+  margin-top: var(--ep-sp-2);
+}
+/* 激活 / 当前生效 */
+.ep-btn--active {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+.ep-btn--danger:hover:not([disabled]) {
+  color: var(--ep-danger);
+  background: var(--ep-surface-3);
+}
+
+/* ---- 样式面板字段行：(label 72px + 控件 flex:1) ---- */
+.ep-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-2);
+  margin-bottom: var(--ep-sp-2);
+}
+.ep-field > label {
+  flex: 0 0 72px;
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+.ep-field > input,
+.ep-field > select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--ep-control-h);
+  padding: 0 var(--ep-sp-2);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-sm);
+  background: var(--ep-surface);
+  font-size: var(--ep-fs-12);
+}
+.ep-field > input:focus,
+.ep-field > select:focus {
+  outline: none;
+  border-color: var(--ep-accent);
+  box-shadow: 0 0 0 3px var(--ep-accent-soft);
+}
+.ep-field > input[type='color'] {
+  padding: 2px;
+  cursor: pointer;
+}
+.ep-field > button {
+  flex: 1 1 auto;
+  height: var(--ep-control-h);
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-sm);
+  background: var(--ep-surface);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink);
+}
+.ep-field > button:hover:not([disabled]) {
+  background: var(--ep-surface-3);
+}
+.ep-field > button[disabled] {
+  color: var(--ep-ink-3);
+  cursor: not-allowed;
+}
+
+/* ---- 面板标题 ---- */
+.ep-elements > h3,
+.ep-layers > h3,
+.ep-panel > h3 {
+  margin: 0 0 var(--ep-sp-2);
+  font-size: var(--ep-fs-11);
+  font-weight: 600;
+  color: var(--ep-ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ============ 3. 左侧「插入」面板 ============ */
+.ep-elements {
+  flex: 0 0 auto;
+  width: 160px;
+  padding: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+}
+
+/* ============ 4. 左侧「图层」面板 ============ */
+.ep-layers {
+  flex: 0 0 auto;
+  width: 200px;
+  max-height: 600px;
+  padding: var(--ep-sp-3);
+  border-right: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+  overflow: auto;
+}
+.ep-layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ep-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: var(--ep-r-xs);
+  font-size: var(--ep-fs-12);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ep-layer-row:hover {
+  background: var(--ep-surface-3);
+}
+/* 选中行（原实现为内联 #dbeafe，现统一到 --ep-focus-bg） */
+.ep-layer-row--selected,
+.ep-layer-row--selected:hover {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+.ep-layer-toggle {
+  flex: 0 0 12px;
+  width: 12px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ep-ink-3);
+}
+.ep-layer-row > span:not(.ep-layer-toggle) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 行内小按钮三兄弟：排序 / 锁定 / 显隐
+   ⚠️ 它们的标签与 data-dir 被 e2e 依赖（layers.spec.ts 用
+   button[data-dir="-1"]、button hasText '👁'/'🔓' 定位），标签名与 dataset 不得改动。
+   .ep-layer-hide 是本次新增的类名（原先无类名、纯内联），新增不破坏既有选择器。 */
+.ep-layer-reorder,
+.ep-layer-lock,
+.ep-layer-hide {
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: var(--ep-r-xs);
+  line-height: 1;
+  color: var(--ep-ink-3);
+}
+.ep-layer-reorder,
+.ep-layer-lock {
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+}
+.ep-layer-hide {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+.ep-layer-reorder:hover:not([disabled]),
+.ep-layer-lock:hover,
+.ep-layer-hide:hover {
+  background: var(--ep-line);
+  color: var(--ep-ink);
+}
+.ep-layer-reorder[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.ep-layer-more {
+  /* 左缩进比行再深一档，视觉上归属父行 */
+  padding: 2px 4px 2px 24px;
+  font-size: var(--ep-fs-11);
+  color: var(--ep-ink-3);
+  cursor: pointer;
+}
+.ep-layer-more:hover {
+  color: var(--ep-accent);
+}
+
+/* ============ 5. 右侧「样式」面板 ============ */
+.ep-panel {
+  flex: 0 0 auto;
+  width: 220px;
+  padding: var(--ep-sp-3);
+  border-left: 1px solid var(--ep-line);
+  background: var(--ep-surface-2);
+}
+.ep-box,
+.ep-deco {
+  margin-top: var(--ep-sp-3);
+  padding-top: var(--ep-sp-2);
+  border-top: 1px solid var(--ep-line);
+}
+/* ⚠️ 这个类的 display 被 CSS 钉死为 none，JS 显形时必须显式赋 'block'。
+   不可写 `style.display = ''` —— 清空内联后会回落到这里的 none，提示将永不显形。
+   （StylePanel 的 showNotice 已按此约定实现，2026-09-22 排查确认。） */
+.ep-notice {
+  margin: var(--ep-sp-1) 0;
+  padding: var(--ep-sp-1) var(--ep-sp-2);
+  border-radius: var(--ep-r-xs);
+  background: rgba(217, 58, 43, 0.08);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-danger);
+  display: none;
+}
+/* 样式面板里的分组小标题（BoxModelSection / DecorationSection） */
+.ep-box > h4,
+.ep-deco > h4 {
+  margin: var(--ep-sp-2) 0 var(--ep-sp-1);
+  font-size: var(--ep-fs-12);
+  font-weight: 600;
+  color: var(--ep-ink-2);
+}
+
+/* ============ 6. 画布与预览 ============ */
+/* 几何红线：画布宿主的 position:relative、画布的 width:100% / height:600px
+   一律留在 JS 内联，本区块只承担观感（描边、圆角、底色、字体）。
+   ⚠️ 不要在此给画布宿主声明 flex —— 画布宽度 = 剩余空间撑满，flex 一变，
+   e2e 的拖拽、缩放、选中框对齐断言就会整体位移。 */
+#ep-canvas-frame {
+  display: block;
+  width: 100%;
+  height: 600px;
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-paper);
+  background: var(--ep-surface);
+}
+.ep-preview-host {
+  flex: 0 0 auto;
+  padding: 0 var(--ep-sp-4) var(--ep-sp-3);
+}
+#ep-preview-frame {
+  display: block;
+  width: 100%;
+  height: 600px;
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-paper);
+  background: var(--ep-surface);
+}
+
+/* ============ 7. 画布覆盖层 ============ */
+/* 本区块只声明「长什么样」。所有 position / inset / display / z-index /
+   width / height 一律由 JS 内联控制 —— 它们是几何计算的结果，也是 e2e 的断言对象。
+   刻意不在 CSS 重复声明：内联优先级更高，写了也会被覆盖，
+   属于「改了 CSS 却不生效」的双源陷阱。 */
+#ep-hover-box {
+  border: 2px solid var(--ep-accent-line);
+  background: var(--ep-accent-soft);
+}
+#ep-selected-box {
+  border: 2px solid var(--ep-selected);
+}
+.ep-selected-box-multi {
+  border: 2px solid var(--ep-selected);
+  opacity: 0.7;
+}
+/* 8 个缩放手柄：尺寸由 JS 的 HANDLE_SIZE 常量决定，此处只给配色。
+   白描边是辨识度保障 —— 蓝底手柄压在蓝色元素上时不至于糊成一片。 */
+#ep-overlay-root [data-dir] {
+  background: var(--ep-handle);
+  border: 1px solid var(--ep-handle-ring);
+}
+.ep-lock-badge {
+  border: 1px solid var(--ep-line-2);
+  border-radius: var(--ep-r-xs);
+  background: var(--ep-surface);
+  text-align: center;
+}
+.ep-marquee {
+  border: 1px solid var(--ep-accent);
+  background: rgba(47, 107, 255, 0.1);
+}
+
+/* ============ 8. 浮层 ============ */
+.ep-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  padding: var(--ep-sp-1) 0;
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-3);
+}
+.ep-menu-item {
+  padding: var(--ep-sp-2) var(--ep-sp-3);
+  font-size: var(--ep-fs-13);
+  color: var(--ep-ink);
+  cursor: pointer;
+}
+.ep-menu-item:hover {
+  background: var(--ep-focus-bg);
+  color: var(--ep-accent);
+}
+.ep-menu-item[data-disabled='true'] {
+  color: var(--ep-ink-3);
+  cursor: default;
+}
+.ep-menu-item[data-disabled='true']:hover {
+  background: transparent;
+  color: var(--ep-ink-3);
+}
+/* 定位（fixed + 右上角偏移）与显隐状态由 JS 内联控制（LinkPopover 构造），
+   刻意不在 CSS 声明 position —— 避免「CSS 说 absolute、JS 实际 fixed」的双源误导。 */
+.ep-link-popover {
+  z-index: 9999;
+  padding: var(--ep-sp-3);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-3);
+}
+.ep-image-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 31, 30, 0.35);
+}
