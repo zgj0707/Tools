@@ -300,6 +300,28 @@ const RESIDUE_SELF_TEST_HTML =
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * 布局前置条件的键名 / 取值，必须与 src/app/layout/UiLayout.ts 保持一致。
+ * 本脚本是 .mjs，无法 import TS，故此处以字面量镜像 —— 改动源头时两处同步。
+ */
+const LAYOUT_KEY = 'easypage:layout';
+const LAYOUT_OPEN_ALL = JSON.stringify({ left: true, right: true });
+
+/**
+ * 新建一个「左右面板已展开」的上下文页面。
+ *
+ * 方案 C 默认收起左右面板；而本度量的固定操作脚本依赖样式面板的控件
+ * （.ep-panel input[type=color] 与 .ep-box input[type=number]），
+ * 故与 tests/e2e 同源处理：用 storageState 预置布局偏好作为统一前置条件，
+ * 让度量口径与合入前基线保持可比（操作脚本本身一字未改）。
+ */
+async function newLayoutPage(browser, storageState) {
+  const ctx = await browser.newContext({ storageState });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(PAGE_TIMEOUT_MS);
+  return { ctx, page };
+}
+
 /** 打开应用并导入一段 HTML，返回 frameLocator。 */
 async function importSource(page, baseUrl, source) {
   await page.addInitScript(() => {
@@ -713,6 +735,16 @@ async function main() {
   if (!baseUrl) throw new Error('vite dev server 未返回可用 URL');
 
   const browser = await chromium.launch({ headless: true });
+  /** 面板展开的布局前置条件（见 newLayoutPage 注释）。origin 用 dev server 实际地址。 */
+  const layoutStorageState = {
+    cookies: [],
+    origins: [
+      {
+        origin: new URL(baseUrl).origin,
+        localStorage: [{ name: LAYOUT_KEY, value: LAYOUT_OPEN_ALL }],
+      },
+    ],
+  };
   const files = listFixtures();
   const perFixture = [];
   const staticPerFixture = [];
@@ -760,8 +792,7 @@ async function main() {
       let losslessRate = null;
       let exportedNoEdit = null;
       let roundTrip = { losslessRate: null, matched: 0, total: 0 };
-      const pageNoEdit = await browser.newPage();
-      pageNoEdit.setDefaultTimeout(PAGE_TIMEOUT_MS);
+      const { ctx: ctxNoEdit, page: pageNoEdit } = await newLayoutPage(browser, layoutStorageState);
       try {
         const r = await runNoEditRoundTrip(pageNoEdit, baseUrl, source);
         exportedNoEdit = r.exported;
@@ -778,12 +809,11 @@ async function main() {
       } catch (e) {
         roundTrip.error = String(e.message).split('\n')[0];
       } finally {
-        await pageNoEdit.close();
+        await ctxNoEdit.close();
       }
 
       // —— 固定操作脚本：hitRate / residueCount / 编辑往返保真 ——
-      const page = await browser.newPage();
-      page.setDefaultTimeout(PAGE_TIMEOUT_MS);
+      const { ctx, page } = await newLayoutPage(browser, layoutStorageState);
       page.on('dialog', (d) => void d.dismiss().catch(() => {}));
       let opsResult;
       try {
@@ -801,7 +831,7 @@ async function main() {
           boxes: null,
         };
       } finally {
-        await page.close();
+        await ctx.close();
       }
 
       if (opsResult.ok) hitCount += 1;

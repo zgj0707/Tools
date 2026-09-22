@@ -43,6 +43,7 @@ import { Marquee } from './canvas/Marquee';
 import { compute, type AlignType } from '../core/layout/alignment';
 import { Breadcrumb } from './statusbar/Breadcrumb';
 import { LinkPopover } from './panels/ribbon/LinkPopover';
+import { loadLayout, persistLayout, type UiLayoutState } from './layout/UiLayout';
 
 export class App {
   private readonly root: HTMLElement;
@@ -73,6 +74,11 @@ export class App {
   private canvasHostEl!: HTMLDivElement;
   private previewHostEl!: HTMLDivElement;
   private statusbarEl!: HTMLDivElement;
+  private importOverlay!: HTMLDivElement;
+  /** 左右面板开合（持久化，默认收起 —— 方案 C 画布优先）。 */
+  private layout: UiLayoutState = loadLayout();
+  /** 导入浮层的手动开关；无文档时强制可见（空状态引导），此值不起作用。 */
+  private importOpen = true;
 
   /**
    * @param platform 平台装配（由 platforms/** 提供）。app 层只依赖 core 端口类型，
@@ -104,10 +110,13 @@ export class App {
     topbar.appendChild(brand);
 
     // 工具栏（一级动作）
+    // 注意：「导入 HTML」这个提交按钮在导入浮层里，不在顶栏 —— 顶栏的对应入口是
+    // 「粘贴 HTML」（唤起浮层）。理由是 getByRole 的 name 为子串匹配，
+    // 两个按钮不能叫同一个名字（会命中 2 个元素触发 strict mode 违规）。
     const toolbar = document.createElement('div');
     toolbar.className = 'ep-toolbar';
 
-    const importBtn = this.makeButton(t('button.import'), () => this.importFromTextarea());
+    const pasteBtn = this.makeButton(t('button.pasteHtml'), () => this.toggleImportOverlay());
     const blankBtn = this.makeButton(t('button.blank'), () => this.loadBlank());
     const previewBtn = this.makeButton(t('button.preview'), () => this.togglePreview());
     const exportBtn = this.makeButton(t('button.export'), () => this.exportHtml());
@@ -115,11 +124,21 @@ export class App {
     const resetBtn = this.makeButton(t('button.resetTransform'), () => this.resetTransform());
     const painterBtn = this.makeButton(t('button.formatPainter'), () => this.formatPainter.startOnce());
     painterBtn.addEventListener('dblclick', () => this.formatPainter.startContinuous());
-    toolbar.append(importBtn, blankBtn, previewBtn, exportBtn, copyBtn, resetBtn, painterBtn);
+    toolbar.append(pasteBtn, blankBtn, previewBtn, exportBtn, copyBtn, resetBtn, painterBtn);
     topbar.appendChild(toolbar);
+
+    // 面板开关（C 版：左右面板默认收起，按需滑出）
+    const panelGroup = document.createElement('div');
+    panelGroup.className = 'ep-topbar__panels';
+    const leftToggle = this.makePanelToggle(t('panel.toggleLeft'), 'left', t('panel.toggleLeftHint'));
+    const rightToggle = this.makePanelToggle(t('panel.toggleRight'), 'right', t('panel.toggleRightHint'));
+    panelGroup.append(leftToggle, rightToggle);
+    topbar.appendChild(panelGroup);
     this.root.appendChild(topbar);
 
-    // 对齐/分布按钮组（T113）
+    // 对齐/分布按钮组（T113）—— C 版：贴着画布顶部浮动，故挂到画布列内（见下）。
+    // 刻意留在文档流内而非 position:absolute：绝对浮层会遮住画布顶部 ~36px，
+    // 而 e2e 大量直接点击画布元素，被遮挡会命中失败。视觉上用胶囊 + 阴影做出「浮动」感。
     const alignRow = document.createElement('div');
     alignRow.className = 'ep-alignbar';
     const mkAlign = (label: string, type: AlignType) => {
@@ -132,24 +151,22 @@ export class App {
       mkAlign(t('align.top'), 'top'), mkAlign(t('align.bottom'), 'bottom'), mkAlign(t('align.vcenter'), 'vcenter'),
       mkAlign(t('align.hdistribute'), 'hdistribute'), mkAlign(t('align.vdistribute'), 'vdistribute'),
     );
-    this.root.appendChild(alignRow);
 
-    // 粘贴 + 文件
-    const pasteRow = document.createElement('div');
-    pasteRow.className = 'ep-import';
+    // ── 导入浮层（C 版空状态引导 + 顶栏「粘贴 HTML」按需唤起）──
+    // 无文档时强制可见（大面积留白 + 中央输入区，界面存在感最低）；
+    // 导入成功后收起，把视野让给画布。
+    this.importOverlay = document.createElement('div');
+    this.importOverlay.className = 'ep-import-overlay';
+    const importCard = document.createElement('div');
+    importCard.className = 'ep-import-card';
 
-    this.textarea = document.createElement('textarea');
-    this.textarea.className = 'ep-import__textarea';
-    this.textarea.placeholder = t('placeholder.pasteHtml');
-    pasteRow.appendChild(this.textarea);
-
-    this.fileInput = document.createElement('input');
-    this.fileInput.type = 'file';
-    this.fileInput.accept = '.html,text/html';
-    this.fileInput.className = 'ep-import__file';
-    this.fileInput.addEventListener('change', () => this.importFromFile());
-    pasteRow.appendChild(this.fileInput);
-    this.root.appendChild(pasteRow);
+    const importTitle = document.createElement('h2');
+    importTitle.className = 'ep-import__title';
+    importTitle.textContent = t('import.title');
+    const importHint = document.createElement('p');
+    importHint.className = 'ep-import__hint';
+    importHint.textContent = t('import.hint');
+    importCard.append(importTitle, importHint);
 
     // 草稿区（T117）：有草稿时渲染「继续 / 删除」，无草稿只留占位。
     // 注意：这一段曾在重构中丢失（draftRow 只声明未挂载），导致 Ctrl+S 存下的草稿
@@ -158,8 +175,31 @@ export class App {
     this.draftRow = document.createElement('div');
     this.draftRow.id = 'ep-draft-row';
     this.draftRow.className = 'ep-draft-row';
-    this.root.appendChild(this.draftRow);
+    importCard.appendChild(this.draftRow);
     this.refreshDraftList();
+
+    this.textarea = document.createElement('textarea');
+    this.textarea.className = 'ep-import__textarea';
+    this.textarea.placeholder = t('placeholder.pasteHtml');
+    this.textarea.setAttribute('aria-label', 'placeholder.pasteHtml');
+    importCard.appendChild(this.textarea);
+
+    const importActions = document.createElement('div');
+    importActions.className = 'ep-import__actions';
+    this.fileInput = document.createElement('input');
+    this.fileInput.type = 'file';
+    this.fileInput.accept = '.html,text/html';
+    this.fileInput.className = 'ep-import__file';
+    this.fileInput.addEventListener('change', () => this.importFromFile());
+    // 唯一的「导入 HTML」提交按钮。必须留在浮层内：getByRole 的 name 子串匹配下，
+    // 顶栏再放一个同名按钮会命中 2 个元素。
+    const importBtn = this.makeButton(t('button.import'), () => this.importFromTextarea());
+    importBtn.classList.add('ep-btn--primary');
+    importActions.append(this.fileInput, importBtn);
+    importCard.appendChild(importActions);
+
+    this.importOverlay.appendChild(importCard);
+    this.root.appendChild(this.importOverlay);
 
     // 左元素面板 +（编辑 iframe + overlay）+ 右侧样式面板
     const outerRow = document.createElement('div');
@@ -179,14 +219,18 @@ export class App {
     this.layersPanel.bindRerender(() => this.refreshLayers());
     this.imagePicker = new ImagePicker();
 
+    // 画布列：对齐条 → 画布 → 面包屑胶囊，纵向排布；右侧样式面板仍是 .ep-canvas-row 的兄弟。
+    // display/align-items 交给 style/app.css 的 .ep-canvas-row（视觉层），此处只搭结构。
     const mainRow = document.createElement('div');
     mainRow.className = 'ep-canvas-row';
-    mainRow.style.display = 'flex';
-    mainRow.style.alignItems = 'flex-start';
     outerRow.appendChild(mainRow);
+    const canvasCol = document.createElement('div');
+    canvasCol.className = 'ep-canvas-col';
+    mainRow.appendChild(canvasCol);
+    canvasCol.appendChild(alignRow);
     this.canvasHostEl = document.createElement('div');
     this.canvasHostEl.className = 'ep-canvas-host';
-    mainRow.appendChild(this.canvasHostEl);
+    canvasCol.appendChild(this.canvasHostEl);
     this.canvas = new CanvasHost(this.canvasHostEl);
     this.overlay = new OverlayLayer(this.canvas.overlay);
     this.overlay.onHandleStart((dir, e) => this.beginResize(dir, e));
@@ -234,10 +278,14 @@ export class App {
     this.root.appendChild(this.previewHostEl);
     this.preview = this.platform.createPreview(this.previewHostEl);
 
-    // 面包屑状态栏
+    // 面包屑：C 版要求「画布底部的浮动胶囊」。挂在画布列内紧随画布之后 ——
+    // 仍是文档流内元素（不做 position:absolute），原因同对齐条：绝对浮层会遮住
+    // 画布底部的元素，而 e2e 的合成点击与真实点击都以坐标命中为准。
+    // 视觉上用胶囊造型 + 阴影做出「浮在画布下沿」的观感，见 .ep-statusbar。
     this.statusbarEl = document.createElement('div');
     this.statusbarEl.id = 'ep-breadcrumb';
-    this.root.appendChild(this.statusbarEl);
+    this.statusbarEl.className = 'ep-statusbar';
+    canvasCol.appendChild(this.statusbarEl);
     this.breadcrumb = new Breadcrumb(this.statusbarEl);
     this.breadcrumb.onPick((el) => { this.session?.selection.select([el]); });
 
@@ -245,6 +293,58 @@ export class App {
     this.toastEl = document.createElement('div');
     this.toastEl.className = 'ep-toast';
     this.root.appendChild(this.toastEl);
+
+    // 布局初值：面板开合来自持久化状态；无文档 ⇒ 导入浮层可见
+    this.applyLayout();
+    this.syncImportOverlay();
+  }
+
+  // ── 布局状态（T121）────────────────────────────────────────
+  /** 把 layout 状态同步到 DOM：#ep-app 的 data-left / data-right 驱动 CSS 收放。 */
+  private applyLayout(): void {
+    this.root.dataset.left = this.layout.left ? 'open' : 'closed';
+    this.root.dataset.right = this.layout.right ? 'open' : 'closed';
+    for (const b of Array.from(
+      this.root.querySelectorAll<HTMLButtonElement>('.ep-topbar__toggle'),
+    )) {
+      const side = b.dataset.panel === 'right' ? 'right' : 'left';
+      const open = this.layout[side];
+      b.setAttribute('aria-pressed', String(open));
+      b.classList.toggle('ep-btn--active', open);
+    }
+  }
+
+  private togglePanel(side: 'left' | 'right'): void {
+    this.layout = { ...this.layout, [side]: !this.layout[side] };
+    persistLayout(this.layout);
+    this.applyLayout();
+  }
+
+  private makePanelToggle(label: string, side: 'left' | 'right', hint: string): HTMLButtonElement {
+    const btn = this.makeButton(label, () => this.togglePanel(side));
+    btn.classList.add('ep-topbar__toggle');
+    btn.dataset.panel = side;
+    // 用 title 而非 aria-label 写提示：aria-label 会覆盖文本内容成为可访问名，
+    // 而可访问名是 e2e 的定位锚点（getByRole 子串匹配），不能被提示文案污染。
+    btn.title = hint;
+    return btn;
+  }
+
+  /** 导入浮层显隐：无文档强制可见（空状态引导），有文档跟随手动开关。 */
+  private syncImportOverlay(): void {
+    const visible = !this.session || this.importOpen;
+    this.importOverlay.dataset.open = visible ? 'true' : 'false';
+  }
+
+  private toggleImportOverlay(): void {
+    // 空状态已在显示，无需切换；聚焦输入区即是最有用的响应。
+    if (!this.session) {
+      this.textarea.focus();
+      return;
+    }
+    this.importOpen = !this.importOpen;
+    this.syncImportOverlay();
+    if (this.importOpen) this.textarea.focus();
   }
 
   private makeButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -325,6 +425,9 @@ export class App {
     this.overlay.setSelected(null);
     this.breadcrumb.render(null);
     this.refreshLayers();
+    // 导入成功 ⇒ 收起导入浮层，把视野让给画布（C 版：界面存在感最低）
+    this.importOpen = false;
+    this.syncImportOverlay();
     this.toast('toast.importOk');
   }
 

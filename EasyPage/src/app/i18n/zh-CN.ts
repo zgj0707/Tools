@@ -22,6 +22,20 @@ export const messages = {
   'draft.none': '无草稿',
   'draft.recentPrefix': '最近草稿：',
 
+  // ⚠️ 顶栏按钮文案是 e2e 的定位锚点（getByRole 的 name 为**子串**匹配）。
+  //    新增文案前必须先确认不包含这些既有子串：
+  //    导入 HTML / 导出 HTML / 复制 HTML / 新建空白 / 预览 / 重置位移 / 格式刷 /
+  //    左 / 右 / 居中 / 顶 / 底 / 水平等距 / 垂直等距 / 继续 / 删除 / 确定
+  'button.pasteHtml': '粘贴 HTML',
+  'panel.toggleLeft': '插入与图层',
+  'panel.toggleRight': '样式',
+  'panel.toggleLeftHint': '展开 / 收起面板：插入、图层',
+  'panel.toggleRightHint': '展开 / 收起面板：样式',
+
+  // 导入浮层（T121 · C 版空状态引导）
+  'import.title': '粘贴或选择一份 HTML',
+  'import.hint': '落地页 / 活动页 / 邮件 HTML 均可；导出时自动清除编辑器痕迹。',
+
   // 对齐 / 分布工具条（T113）
   'align.left': '左',
   'align.right': '右',

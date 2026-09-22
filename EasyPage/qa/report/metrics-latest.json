@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-22T06:23:26.734Z",
-  "durationMs": 15654,
+  "generatedAt": "2026-09-22T06:36:01.566Z",
+  "durationMs": 23182,
   "mode": "playwright-ui-ops",
   "definitions": {
     "note": "本报告由 Playwright 驱动真实 UI 的固定操作脚本取数；static 字段为原有 happy-dom 静态能力，不参与门禁判定。",

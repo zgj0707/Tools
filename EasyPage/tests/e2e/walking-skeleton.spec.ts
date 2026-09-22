@@ -49,7 +49,10 @@ test('行走骨架：导入→改字→预览→导出', async ({ page }) => {
   // 3. 双击第一个 h2 改字，blur 后 textContent 已更新
   await editFrame.locator('h2').first().dblclick();
   await editFrame.locator('h2').first().fill('新标题ABC');
-  await page.locator('textarea').click(); // 移出焦点触发 blur
+  // 移出焦点触发 blur。原写法是点粘贴框 textarea，但 T121 起导入区收进浮层
+  // （导入成功后自动收起），textarea 不再常驻可见。改用本套件通行的锚点：
+  // 外壳 h1 —— 点一下画布外把键盘焦点从 iframe 收回主文档，意图与效果完全一致。
+  await page.locator('h1').first().click();
   await expect(editFrame.locator('h2').first()).toHaveText('新标题ABC');
 
   // 4. 点预览：预览 iframe 出现且 sandbox 只有 allow-scripts

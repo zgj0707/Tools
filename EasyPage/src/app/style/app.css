@@ -14,6 +14,10 @@
  *   #ep-hover-box #ep-selected-box #ep-draft-row #ep-breadcrumb
  *   .ep-toast .ep-layer-row .ep-layer-reorder .ep-context-menu
  *   [data-dir]（8 个缩放手柄）  [data-align]（8 个对齐按钮）
+ * 布局层（T121）新增的稳定契约：
+ *   #ep-app[data-left|data-right]（open / closed）
+ *   .ep-topbar__toggle[data-panel]（left / right，含 aria-pressed）
+ *   .ep-import-overlay[data-open]   .ep-canvas-col
  * ==========================================================================*/
 
 /* ============ 0. reset ============ */
@@ -99,39 +103,100 @@ textarea {
   gap: var(--ep-sp-1);
 }
 
-/* ---- 对齐 / 分布条 ---- */
-.ep-alignbar {
+/* ---- 面板开关组（C 版：左右面板默认收起，按需滑出）---- */
+.ep-topbar__panels {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: var(--ep-sp-1);
-  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+  padding-left: var(--ep-sp-3);
+  border-left: 1px solid var(--ep-line);
+}
+.ep-topbar__toggle {
+  border-color: var(--ep-line-2);
+}
+/* 激活态用 --ep-btn--active 的底色 + 主色文字，表示「该面板当前已展开」 */
+.ep-topbar__toggle.ep-btn--active {
+  border-color: var(--ep-accent);
+}
+
+/* ---- 对齐 / 分布条：贴着画布顶部的浮动词条（T121）----
+   刻意留在文档流内（不做 position:absolute）—— 绝对浮层会遮住画布顶部约 36px，
+   而 e2e 里大量断言直接点击画布元素，被遮挡即命中失败。
+   「浮动」感由胶囊造型 + 阴影 + 与画布等宽的左对齐营造。 */
+.ep-alignbar {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: var(--ep-sp-1);
+  margin-bottom: var(--ep-sp-2);
+  padding: var(--ep-sp-1) var(--ep-sp-2);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-1);
 }
 .ep-alignbar::before {
   content: '对齐';
   flex: 0 0 auto;
-  margin-right: var(--ep-sp-1);
+  margin: 0 var(--ep-sp-1) 0 var(--ep-sp-2);
   font-size: var(--ep-fs-11);
   color: var(--ep-ink-3);
   letter-spacing: 0.04em;
 }
 
-/* ---- 导入区 ---- */
-.ep-import {
-  flex: 0 0 auto;
-  display: flex;
+/* ---- 导入浮层：C 版空状态引导（无文档时强制可见）----
+   覆盖顶栏以下的全部区域，z-index 低于顶栏（60），保证「粘贴 HTML / 新建空白」仍可点。 */
+.ep-import-overlay {
+  position: fixed;
+  inset: var(--ep-topbar-h) 0 0 0;
+  z-index: 50;
+  display: none;
   align-items: flex-start;
-  gap: var(--ep-sp-2);
-  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+  justify-content: center;
+  padding: 8vh var(--ep-sp-4) var(--ep-sp-4);
+  background: var(--ep-bg);
+  overflow: auto;
+}
+.ep-import-overlay[data-open='true'] {
+  display: flex;
+}
+.ep-import-card {
+  width: 100%;
+  max-width: 620px;
+  padding: var(--ep-sp-5);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-lg);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-2);
+}
+.ep-import__title {
+  margin: 0 0 var(--ep-sp-1);
+  font-size: var(--ep-fs-20);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ep-import__hint {
+  margin: 0 0 var(--ep-sp-4);
+  font-size: var(--ep-fs-12);
+  color: var(--ep-ink-2);
+}
+.ep-import__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ep-sp-3);
+  margin-top: var(--ep-sp-3);
 }
 .ep-import__textarea {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 52px;
-  padding: var(--ep-sp-2) var(--ep-sp-3);
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  padding: var(--ep-sp-3);
   border: 1px solid var(--ep-line-2);
   border-radius: var(--ep-r-md);
-  background: var(--ep-surface);
+  background: var(--ep-surface-2);
   font-size: var(--ep-fs-12);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   resize: vertical;
@@ -146,8 +211,8 @@ textarea {
   box-shadow: 0 0 0 3px var(--ep-accent-soft);
 }
 .ep-import__file {
-  flex: 0 0 auto;
-  max-width: 210px;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--ep-fs-12);
   color: var(--ep-ink-2);
 }
@@ -166,18 +231,20 @@ textarea {
   background: var(--ep-surface-3);
 }
 
-/* ---- 草稿区 ---- */
+/* ---- 草稿区：导入浮层内的「继续上次编辑」入口 ---- */
 .ep-draft-row {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: var(--ep-sp-2);
-  padding: var(--ep-sp-2) var(--ep-sp-4) 0;
+  margin-bottom: var(--ep-sp-3);
+  padding: var(--ep-sp-2) var(--ep-sp-3);
+  border-radius: var(--ep-r-md);
+  background: var(--ep-surface-2);
   font-size: var(--ep-fs-12);
   color: var(--ep-ink-2);
 }
 
-/* ---- 主区：左面板 + 画布 + 右面板（gap 恒为 0，宽度由面板自身 border 分隔）---- */
+/* ---- 主区：左面板 + 画布列 + 右面板（gap 恒为 0，宽度由面板自身 border 分隔）---- */
 .ep-main {
   flex: 1 1 auto;
   display: flex;
@@ -186,13 +253,27 @@ textarea {
   min-width: 0;
 }
 
-/* ---- 底部面包屑 ---- */
+/* ---- 面包屑：画布底部的浮动胶囊（T121）----
+   与对齐条同理留在文档流内，避免绝对浮层遮住画布底部元素、打垮点击类断言。
+   无选中时 :empty 命中 → 整颗胶囊消失，不留空壳。 */
 .ep-statusbar {
   flex: 0 0 auto;
-  min-height: 1.5em;
-  padding: var(--ep-sp-2) var(--ep-sp-4) var(--ep-sp-3);
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: var(--ep-sp-2);
+  padding: var(--ep-sp-1) var(--ep-sp-3);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-r-pill);
+  background: var(--ep-surface);
+  box-shadow: var(--ep-sh-1);
   font-size: var(--ep-fs-12);
   color: var(--ep-ink-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ep-statusbar:empty {
+  display: none;
 }
 
 /* ---- toast：底部居中深色胶囊 ---- */
@@ -257,6 +338,16 @@ textarea {
 .ep-btn--active {
   background: var(--ep-focus-bg);
   color: var(--ep-accent);
+}
+/* 主行动按钮（导入浮层的「导入 HTML」提交） */
+.ep-btn--primary {
+  border-color: var(--ep-accent);
+  background: var(--ep-accent);
+  color: #fff;
+}
+.ep-btn--primary:hover:not([disabled]) {
+  background: #2358d8;
+  color: #fff;
 }
 .ep-btn--danger:hover:not([disabled]) {
   color: var(--ep-danger);
@@ -323,6 +414,44 @@ textarea {
   color: var(--ep-ink-3);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* ============ 2.5 面板收放（C 版核心）============
+   默认收起：由 #ep-app 的 data-left / data-right 驱动。
+   收起用 display:none 而非 transform —— 前者让「不可见」是确定性的（元素不进布局、
+   也不进可访问性树），后者会让元素仍可命中，e2e 里表现为「点了看不见的按钮」。
+   展开时给一段极短的滑入动画，做出「按需滑出」的观感。 */
+#ep-app[data-left='closed'] .ep-elements,
+#ep-app[data-left='closed'] .ep-layers,
+#ep-app[data-right='closed'] .ep-panel {
+  display: none;
+}
+@keyframes ep-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ep-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+#ep-app[data-left='open'] .ep-elements,
+#ep-app[data-left='open'] .ep-layers {
+  animation: ep-slide-in-left 0.14s ease-out;
+}
+#ep-app[data-right='open'] .ep-panel {
+  animation: ep-slide-in-right 0.14s ease-out;
 }
 
 /* ============ 3. 左侧「插入」面板 ============ */
@@ -472,6 +601,16 @@ textarea {
 .ep-canvas-row {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+/* 画布列：对齐条 → 画布 → 面包屑胶囊 纵向排布（T121） */
+.ep-canvas-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 .ep-canvas-host {
   flex: 1 1 auto;

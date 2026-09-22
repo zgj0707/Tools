@@ -1,7 +1,11 @@
-// 真实编辑器实机截图探针 —— C 版视觉落地验收用。
+// 真实编辑器实机截图探针 —— C 版落地验收用（视觉层 + 布局层）。
 //
 // 自起 Vite dev server（独立端口 4199，避免与 e2e 的 4173 冲突）→ 导入示例 HTML
 // → 选中一个元素（激活选中框 / 手柄 / 图层高亮 / 面包屑 / 样式面板）→ 截图。
+//
+// 出两张图，对应方案 C 的两层：
+//   editor-1440x900.png    左右面板展开（与改版前同口径，便于前后对比）
+//   editor-canvas-first.png 左右面板收起（方案 C 的默认观感：画布占满视野）
 //
 // 同时收集：console 错误、页面异常、横向溢出、非本地请求。任何一项非零都会打印出来。
 //
@@ -15,6 +19,10 @@ const URL = `http://localhost:${PORT}`;
 const OUT_DIR = process.argv.includes('--out')
   ? process.argv[process.argv.indexOf('--out') + 1]
   : 'test-results/editor';
+
+/** 与 src/app/layout/UiLayout.ts 保持一致（本文件是 .mjs，无法 import TS，故字面量镜像）。 */
+const LAYOUT_KEY = 'easypage:layout';
+const LAYOUT_OPEN_ALL = JSON.stringify({ left: true, right: true });
 
 const SAMPLE = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -49,6 +57,81 @@ function waitForServer(timeoutMs) {
   });
 }
 
+/** 采集一组布局与视觉指标，供两张截图各出一份。 */
+const COLLECT = () => ({
+  scrollW: document.documentElement.scrollWidth,
+  clientW: document.documentElement.clientWidth,
+  scrollH: document.documentElement.scrollHeight,
+  layout: (() => {
+    const app = document.getElementById('ep-app');
+    return app ? { left: app.dataset.left, right: app.dataset.right } : null;
+  })(),
+  panelVisible: {
+    elements: (() => {
+      const el = document.querySelector('aside.ep-elements');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+    layers: (() => {
+      const el = document.querySelector('aside.ep-layers');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+    style: (() => {
+      const el = document.querySelector('aside.ep-panel');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+  },
+  importOverlay: (() => {
+    const el = document.querySelector('.ep-import-overlay');
+    return el ? getComputedStyle(el).display !== 'none' : null;
+  })(),
+  canvasFrame: (() => {
+    const f = document.getElementById('ep-canvas-frame');
+    if (!f) return null;
+    const r = f.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) };
+  })(),
+  alignBar: (() => {
+    const b = document.querySelector('.ep-alignbar');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) };
+  })(),
+  breadcrumbPill: (() => {
+    const b = document.getElementById('ep-breadcrumb');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+      visible: getComputedStyle(b).display !== 'none',
+      text: b.textContent,
+    };
+  })(),
+  handles: document.querySelectorAll('#ep-overlay-root [data-dir]').length,
+  visibleHandles: Array.from(document.querySelectorAll('#ep-overlay-root [data-dir]')).filter(
+    (h) => getComputedStyle(h).display !== 'none',
+  ).length,
+  selectedBox: (() => {
+    const b = document.getElementById('ep-selected-box');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height), border: getComputedStyle(b).borderTopColor };
+  })(),
+  handleColor: (() => {
+    const h = document.querySelector('#ep-overlay-root [data-dir]');
+    return h ? getComputedStyle(h).backgroundColor : null;
+  })(),
+  toast: document.querySelector('.ep-toast')?.textContent ?? null,
+  layerSelectedBg: (() => {
+    const row = document.querySelector('.ep-layer-row--selected');
+    return row ? getComputedStyle(row).backgroundColor : null;
+  })(),
+  accent: getComputedStyle(document.documentElement).getPropertyValue('--ep-accent').trim(),
+  bg: getComputedStyle(document.body).backgroundColor,
+});
+
 const server = spawn('npm', ['run', 'dev', '--', '--port', String(PORT), '--strictPort'], {
   shell: true,
   stdio: 'ignore',
@@ -61,7 +144,17 @@ try {
   mkdirSync(OUT_DIR, { recursive: true });
 
   browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // 预置「面板展开」：与 tests/e2e、qa:metrics 同一前置条件，保证前后可比
+  const ctx = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: URL, localStorage: [{ name: LAYOUT_KEY, value: LAYOUT_OPEN_ALL }] },
+      ],
+    },
+  });
+  const page = await ctx.newPage();
 
   const consoleErrors = [];
   const pageErrors = [];
@@ -93,42 +186,24 @@ try {
   await page.getByRole('button', { name: '重置位移' }).click();
   await page.waitForTimeout(300);
 
+  // ① 面板展开态（与改版前同口径）
   await page.screenshot({ path: `${OUT_DIR}/editor-1440x900.png` });
+  const metricsOpenPanels = await page.evaluate(COLLECT);
 
-  const metrics = await page.evaluate(() => ({
-    scrollW: document.documentElement.scrollWidth,
-    clientW: document.documentElement.clientWidth,
-    scrollH: document.documentElement.scrollHeight,
-    canvasFrame: (() => {
-      const f = document.getElementById('ep-canvas-frame');
-      if (!f) return null;
-      const r = f.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) };
-    })(),
-    handles: document.querySelectorAll('#ep-overlay-root [data-dir]').length,
-    visibleHandles: Array.from(document.querySelectorAll('#ep-overlay-root [data-dir]')).filter(
-      (h) => getComputedStyle(h).display !== 'none',
-    ).length,
-    selectedBox: (() => {
-      const b = document.getElementById('ep-selected-box');
-      if (!b) return null;
-      const r = b.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), border: getComputedStyle(b).borderTopColor };
-    })(),
-    handleColor: (() => {
-      const h = document.querySelector('#ep-overlay-root [data-dir]');
-      return h ? getComputedStyle(h).backgroundColor : null;
-    })(),
-    toast: document.querySelector('.ep-toast')?.textContent ?? null,
-    layerSelectedBg: (() => {
-      const row = document.querySelector('.ep-layer-row--selected');
-      return row ? getComputedStyle(row).backgroundColor : null;
-    })(),
-    accent: getComputedStyle(document.documentElement).getPropertyValue('--ep-accent').trim(),
-    bg: getComputedStyle(document.body).backgroundColor,
-  }));
+  // ② 面板收起态 —— 方案 C 的默认观感。用顶栏开关收起，顺带验证开关本身可用。
+  await page.locator('.ep-topbar__toggle[data-panel="left"]').click();
+  await page.locator('.ep-topbar__toggle[data-panel="right"]').click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT_DIR}/editor-canvas-first.png` });
+  const metricsCanvasFirst = await page.evaluate(COLLECT);
 
-  console.log(JSON.stringify({ metrics, consoleErrors, pageErrors, externalRequests }, null, 2));
+  console.log(
+    JSON.stringify(
+      { metricsOpenPanels, metricsCanvasFirst, consoleErrors, pageErrors, externalRequests },
+      null,
+      2,
+    ),
+  );
 } finally {
   if (browser) await browser.close();
   server.kill('SIGTERM');
