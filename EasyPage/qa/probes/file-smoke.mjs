@@ -73,7 +73,16 @@ const ok = !gotoError && hardErrors.length === 0 && mounted;
 console.log(
   'RESULT ' +
     JSON.stringify(
-      { ok, target, mounted, appChildren: info?.appChildren, gotoError, hardErrors, logs, screenshot: shotPath },
+      {
+        ok,
+        target,
+        mounted,
+        appChildren: info?.appChildren,
+        gotoError,
+        hardErrors,
+        logs,
+        screenshot: shotPath,
+      },
       null,
       2,
     ),

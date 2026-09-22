@@ -63,14 +63,15 @@ let server = null;
 if (!externalBase) {
   const viteBin = resolve(repoRoot, 'node_modules/vite/bin/vite.js');
   if (!existsSync(viteBin)) {
-    console.error(`RESULT ${JSON.stringify({ ok: false, error: 'vite binary not found', viteBin })}`);
+    console.error(
+      `RESULT ${JSON.stringify({ ok: false, error: 'vite binary not found', viteBin })}`,
+    );
     process.exit(1);
   }
-  server = spawn(
-    process.execPath,
-    [viteBin, 'preview', '--port', String(PORT), '--strictPort'],
-    { cwd: repoRoot, stdio: 'ignore' },
-  );
+  server = spawn(process.execPath, [viteBin, 'preview', '--port', String(PORT), '--strictPort'], {
+    cwd: repoRoot,
+    stdio: 'ignore',
+  });
 }
 
 const logs = [];
@@ -102,25 +103,29 @@ try {
         clipboardType: typeof navigator.clipboard,
       }));
       out.env = env;
-      record('安全上下文与剪贴板可用', env.isSecureContext === true && env.clipboardType === 'object', env);
+      record(
+        '安全上下文与剪贴板可用',
+        env.isSecureContext === true && env.clipboardType === 'object',
+        env,
+      );
 
       await page.locator('textarea').fill(FIXTURE);
       await page.getByRole('button', { name: '导入 HTML' }).click();
       await page.waitForTimeout(700);
-      const h2 = (await page
-        .frameLocator('#ep-canvas-frame')
-        .locator('h2')
-        .first()
-        .textContent())?.trim();
+      const h2 = (
+        await page.frameLocator('#ep-canvas-frame').locator('h2').first().textContent()
+      )?.trim();
       record('导入成功', h2 === '原始标题', { h2 });
 
       await page.getByRole('button', { name: '复制 HTML' }).click();
       await page.waitForTimeout(500);
-      const toast = (await page
-        .locator('.ep-toast')
-        .first()
-        .textContent()
-        .catch(() => null))?.trim();
+      const toast = (
+        await page
+          .locator('.ep-toast')
+          .first()
+          .textContent()
+          .catch(() => null)
+      )?.trim();
       out.toast = toast;
       record('复制走成功分支（非降级）', toast === '导出成功', { toast });
 
@@ -128,11 +133,10 @@ try {
       out.clipboardLength = clip.length;
       record('剪贴板已写入内容', clip.length > 0, { length: clip.length });
       record('剪贴板内容为正文 HTML', clip.includes('原始标题'), { head: clip.slice(0, 100) });
-      record(
-        '剪贴板内容无编辑器痕迹',
-        !clip.includes('contenteditable') && !/\bep-/.test(clip),
-        { hasContenteditable: clip.includes('contenteditable'), hasEpPrefix: /\bep-/.test(clip) },
-      );
+      record('剪贴板内容无编辑器痕迹', !clip.includes('contenteditable') && !/\bep-/.test(clip), {
+        hasContenteditable: clip.includes('contenteditable'),
+        hasEpPrefix: /\bep-/.test(clip),
+      });
     } finally {
       await browser.close();
     }
@@ -147,6 +151,11 @@ const hard = logs.filter((l) => l.startsWith('[pageerror]') || l.startsWith('[er
 const reqFail = logs.filter((l) => l.startsWith('[reqfail]'));
 const ok = failures.length === 0 && hard.length === 0 && reqFail.length === 0;
 console.log(
-  'RESULT ' + JSON.stringify({ ok, base: BASE, steps, failures, hardErrors: hard, requestFailures: reqFail }, null, 2),
+  'RESULT ' +
+    JSON.stringify(
+      { ok, base: BASE, steps, failures, hardErrors: hard, requestFailures: reqFail },
+      null,
+      2,
+    ),
 );
 process.exit(ok ? 0 : 1);

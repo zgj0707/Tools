@@ -35,7 +35,10 @@ for (const arg of args) {
     results.push({ file: arg, ok: false, error: 'file not found' });
     continue;
   }
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 1,
+  });
   const consoleErrors = [];
   const externalRequests = [];
   page.on('console', (m) => {
@@ -44,7 +47,8 @@ for (const arg of args) {
   page.on('pageerror', (e) => consoleErrors.push('pageerror: ' + e.message));
   page.on('request', (r) => {
     const u = r.url();
-    if (!u.startsWith('file://') && !u.startsWith('data:') && !u.startsWith('blob:')) externalRequests.push(u);
+    if (!u.startsWith('file://') && !u.startsWith('data:') && !u.startsWith('blob:'))
+      externalRequests.push(u);
   });
 
   await page.goto(pathToFileURL(path).href, { waitUntil: 'load' });

@@ -88,13 +88,23 @@ const COLLECT = () => ({
     const f = document.getElementById('ep-canvas-frame');
     if (!f) return null;
     const r = f.getBoundingClientRect();
-    return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) };
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+    };
   })(),
   alignBar: (() => {
     const b = document.querySelector('.ep-alignbar');
     if (!b) return null;
     const r = b.getBoundingClientRect();
-    return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.x), y: Math.round(r.y) };
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+    };
   })(),
   breadcrumbPill: (() => {
     const b = document.getElementById('ep-breadcrumb');
@@ -117,7 +127,11 @@ const COLLECT = () => ({
     const b = document.getElementById('ep-selected-box');
     if (!b) return null;
     const r = b.getBoundingClientRect();
-    return { w: Math.round(r.width), h: Math.round(r.height), border: getComputedStyle(b).borderTopColor };
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      border: getComputedStyle(b).borderTopColor,
+    };
   })(),
   handleColor: (() => {
     const h = document.querySelector('#ep-overlay-root [data-dir]');
@@ -149,9 +163,7 @@ try {
     viewport: { width: 1440, height: 900 },
     storageState: {
       cookies: [],
-      origins: [
-        { origin: URL, localStorage: [{ name: LAYOUT_KEY, value: LAYOUT_OPEN_ALL }] },
-      ],
+      origins: [{ origin: URL, localStorage: [{ name: LAYOUT_KEY, value: LAYOUT_OPEN_ALL }] }],
     },
   });
   const page = await ctx.newPage();

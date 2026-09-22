@@ -170,7 +170,10 @@ try {
   const mark1 = logs.length;
   const overlayOpen = await page.locator('.ep-import-overlay').getAttribute('data-open');
   const textareaVisible = await page.locator('textarea').isVisible();
-  record('空态导入浮层可见', overlayOpen === 'true' && textareaVisible, { overlayOpen, textareaVisible });
+  record('空态导入浮层可见', overlayOpen === 'true' && textareaVisible, {
+    overlayOpen,
+    textareaVisible,
+  });
   await page.screenshot({ path: resolve(shotDir, 'file-journey-empty.png') });
 
   // ── 2. 粘贴 + 导入 ──────────────────────────────────────────────────
@@ -225,7 +228,10 @@ try {
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(700);
   const leftPersisted = await page.locator('#ep-app').getAttribute('data-left');
-  record('面板偏好持久化', leftPersisted === 'open', { leftPersisted, localStorageOk: boot.localStorageOk });
+  record('面板偏好持久化', leftPersisted === 'open', {
+    leftPersisted,
+    localStorageOk: boot.localStorageOk,
+  });
   // 复选：再导入一次，恢复有文档状态以便导出
   await page.locator('textarea').fill(FIXTURE);
   await page.getByRole('button', { name: '导入 HTML' }).click();
