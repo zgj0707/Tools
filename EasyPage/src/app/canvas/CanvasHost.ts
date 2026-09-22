@@ -108,6 +108,17 @@ export class CanvasHost {
       }
     });
 
+    // 画布内禁止任何导航：<a href> 的 click/auxclick 与 <form> 的 submit 会让编辑帧跳到目标页，
+    // 覆盖掉 srcdoc 里的编辑文档，画布当场失效且无返回路径。捕获阶段拦截默认动作，
+    // 但不 stopPropagation —— 选中与 dblclick 处理器必须继续工作。
+    const blockNav = (e: Event): void => {
+      const t = e.target as Node | null;
+      if (t && t.nodeType === 1 && (t as Element).closest('a[href], area[href]')) e.preventDefault();
+    };
+    cd.addEventListener('click', blockNav, true);
+    cd.addEventListener('auxclick', blockNav, true);
+    cd.addEventListener('submit', (e) => e.preventDefault(), true);
+
     // 编辑文档内滚动（捕获，含子元素滚动）后重定位；window resize 已在构造时挂载一次
     cd.addEventListener('scroll', () => this.requestLayout(), true);
   }

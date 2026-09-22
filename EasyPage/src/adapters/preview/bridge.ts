@@ -22,6 +22,17 @@ export const BRIDGE_SCRIPT = `<script>
       }
     });
   }
+  // 预览帧内同样禁止导航：预览是渲染保真视图，没有返回入口，
+  // 点一次 <a href> 预览就被目标页覆盖，用户只能关掉再开。
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if (t && t.closest && t.closest('a[href], area[href]')) e.preventDefault();
+  }, true);
+  document.addEventListener('auxclick', function(e){
+    var t = e.target;
+    if (t && t.closest && t.closest('a[href], area[href]')) e.preventDefault();
+  }, true);
+  document.addEventListener('submit', function(e){ e.preventDefault(); }, true);
   window.addEventListener('message', function(event){
     if (event.data === 'ep:extract') {
       freezeForms();
