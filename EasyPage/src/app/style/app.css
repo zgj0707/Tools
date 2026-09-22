@@ -464,10 +464,20 @@ textarea {
 }
 
 /* ============ 6. 画布与预览 ============ */
-/* 几何红线：画布宿主的 position:relative、画布的 width:100% / height:600px
-   一律留在 JS 内联，本区块只承担观感（描边、圆角、底色、字体）。
-   ⚠️ 不要在此给画布宿主声明 flex —— 画布宽度 = 剩余空间撑满，flex 一变，
-   e2e 的拖拽、缩放、选中框对齐断言就会整体位移。 */
+/* 画布宿主链撑满剩余空间 —— 这是「画布优先」成立的前提。
+   原实现 mainRow 与 canvasHostEl 都没有 flex 增长，宽度双双由内容决定，
+   于是 iframe 回落到固有宽度 300px：1440px 窗口里画布只有 302px（占屏 21%）。
+   基线实测 304px，属既存缺陷，与本轮视觉改造无关。
+   画布自身的 width:100% / height:600px 仍是几何红线，留在 JS 内联。 */
+.ep-canvas-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ep-canvas-host {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative; /* 与 CanvasHost 构造里的内联重复声明，作兜底 */
+}
 #ep-canvas-frame {
   display: block;
   width: 100%;

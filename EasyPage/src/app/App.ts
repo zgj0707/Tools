@@ -180,10 +180,12 @@ export class App {
     this.imagePicker = new ImagePicker();
 
     const mainRow = document.createElement('div');
+    mainRow.className = 'ep-canvas-row';
     mainRow.style.display = 'flex';
     mainRow.style.alignItems = 'flex-start';
     outerRow.appendChild(mainRow);
     this.canvasHostEl = document.createElement('div');
+    this.canvasHostEl.className = 'ep-canvas-host';
     mainRow.appendChild(this.canvasHostEl);
     this.canvas = new CanvasHost(this.canvasHostEl);
     this.overlay = new OverlayLayer(this.canvas.overlay);
