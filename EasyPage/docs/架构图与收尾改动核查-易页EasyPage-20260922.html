@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>易页 EasyPage · 收尾改动核查与架构图（2026-09-22）</title>
+<style>
+  :root{
+    --ink:#1f2328; --ink2:#57606a; --ink3:#8b949e;
+    --line:#d8dee4; --line2:#eaeef2;
+    --blue50:#e6f1fb; --blue600:#185fa5; --blue800:#0c447c;
+    --red50:#fcebeb; --red600:#a32d2d; --red800:#791f1f;
+    --amber50:#faeeda; --amber600:#854f0b;
+    --bg:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1040px;margin:0 auto;padding:48px 32px 80px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:36px}
+  h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .sub{color:var(--ink2);font-size:14px}
+  h2{font-size:19px;font-weight:600;margin:44px 0 14px;padding-top:8px;border-top:1px solid var(--line2)}
+  h2:first-of-type{border-top:none;padding-top:0}
+  h3{font-size:15px;font-weight:600;margin:24px 0 8px;color:var(--blue800)}
+  p{margin:10px 0}
+  code{font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;
+    background:#f6f8fa;border:1px solid var(--line2);border-radius:4px;padding:1px 5px}
+  .callout{border-left:3px solid var(--blue600);background:var(--blue50);
+    padding:14px 18px;border-radius:0 8px 8px 0;margin:18px 0}
+  .callout.warn{border-left-color:var(--red600);background:var(--red50)}
+  .callout.amber{border-left-color:var(--amber600);background:var(--amber50)}
+  .callout p{margin:4px 0}
+  .callout strong{color:var(--blue800)}
+  .callout.warn strong{color:var(--red800)}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{background:#f6f8fa;font-weight:600;color:var(--ink2);border-bottom:1px solid var(--line);white-space:nowrap}
+  td.mono,th.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px}
+  .ok{color:#1a7f37;font-weight:600}
+  .no{color:var(--red600);font-weight:600}
+  .fig{margin:22px 0 8px;padding:20px;border:1px solid var(--line2);border-radius:12px;background:#fff;overflow:auto}
+  .fig svg{min-width:680px}
+  .cap{color:var(--ink2);font-size:13px;margin:0 0 26px}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}
+  .kpi div{border:1px solid var(--line2);border-radius:10px;padding:12px 14px}
+  .kpi b{display:block;font-size:22px;font-weight:600;letter-spacing:-.02em}
+  .kpi span{color:var(--ink2);font-size:12.5px}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line2);color:var(--ink3);font-size:12.5px}
+  .tag{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:20px;margin-right:6px}
+  .tag.red{background:var(--red50);color:var(--red800)}
+  .tag.blue{background:var(--blue50);color:var(--blue800)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>易页 EasyPage · 收尾改动核查与架构图</h1>
+  <div class="sub">核查时间 2026-09-22 13:25（GMT+9）｜仓库无 Git 初始化，改动以文件系统时间戳 + 内容实测为准｜未修改任何源码</div>
+</header>
+
+<h2>一、结论</h2>
+<div class="callout warn">
+  <p><strong>本次「收尾」只在验证侧落子，产品代码一行未动。</strong>新增 1 个首屏入口 e2e 测试 + 1 个上传夹具，重建产物、重跑度量。</p>
+  <p>上一轮审阅指出的 3 处契约偏差、1 处可复现缺陷、4 个空端口，<strong>逐条复核后全部原样存在</strong>，无一条被处理。</p>
+</div>
+<div class="callout amber">
+  <p><strong>唯一的实质性收获</strong>：首屏入口（粘贴导入 / 新建空白 / 导出无残留 / 空内容报错 / 文件上传）第一次有了 e2e 覆盖；同时新测试里 <code>test.skip('草稿续开')</code> 等于开发方自己承认草稿恢复链路不通——与 <code>DraftStorage</code> 端口无实现互为印证。</p>
+</div>
+
+<div class="kpi">
+  <div><b>55</b><span>e2e 通过（1 skipped，15.1s）</span></div>
+  <div><b>1</b><span>新增 e2e 规格文件</span></div>
+  <div><b>0</b><span>src/ 下被改动的文件</span></div>
+  <div><b>3</b><span>契约偏差仍存</span></div>
+</div>
+
+<h2>二、本次改动了什么（13:01–13:03）</h2>
+<p>仓库无 Git，无法出 diff。以审阅报告落盘时间（12:39）为分界线，按 mtime 与内容比对，分界线之后的写入只有以下 5 个文件：</p>
+
+<table>
+  <thead><tr><th>时间</th><th class="mono">文件</th><th>性质</th><th>内容要点</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="mono">13:01</td>
+      <td class="mono">tests/e2e/assets/upload.html</td>
+      <td>新增（115 B）</td>
+      <td>filechooser 上传夹具，单行 HTML，含 <code>#p1</code> 与 <code>&lt;script&gt;</code></td>
+    </tr>
+    <tr>
+      <td class="mono">13:02</td>
+      <td class="mono">tests/e2e/startpage.spec.ts</td>
+      <td>新增（2810 B）</td>
+      <td>5 用例 + 1 skip：粘贴/空白进入、导出含脚本无残留（断言无 <code>contenteditable</code>／无 <code>data-ep-editing</code>／无 <code>ep-</code> 前缀）、空内容报错 toast、filechooser 上传、<code>test.skip</code> 草稿续开</td>
+    </tr>
+    <tr>
+      <td class="mono">13:03</td>
+      <td class="mono">dist/index.html</td>
+      <td>重建产物（87 024 B）</td>
+      <td>与审阅时 87.02 kB 同量级；因 src/ 未变，产物内容等价</td>
+    </tr>
+    <tr>
+      <td class="mono">13:03</td>
+      <td class="mono">qa/report/metrics-latest.json</td>
+      <td>重跑产物</td>
+      <td><strong>门禁脚本未改</strong>（<code>qa/metrics/run-metrics.mjs</code> mtime 停在 09-21 10:38）→ 输出仍是构造性结论：<code>hitRate: null</code>、<code>losslessRate: 1</code>、<code>residueCount: 0</code>，notes 自述「未接入编辑器，hitRate 基线为占位 null」</td>
+    </tr>
+    <tr>
+      <td class="mono">13:03</td>
+      <td class="mono">test-results/.last-run.json</td>
+      <td>运行残留</td>
+      <td><code>{"status":"passed"}</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>另有一批 10:17–10:52 的写入（<code>resourceAudit.ts</code>、<code>stores/draft.ts</code>、<code>zh-CN.ts</code>、<code>App.ts</code>、<code>sanitizeImport.ts</code> 及 <code>package.json</code> / <code>vite.config.ts</code>），均发生在审阅报告落盘之前，已包含在上一轮审阅范围内，不属本次改动。</p>
+
+<h2>三、上轮问题复核（逐条实测）</h2>
+<table>
+  <thead><tr><th>编号</th><th>问题</th><th>当前状态</th><th>实测证据</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="mono">P0</td>
+      <td>度量门禁无判别力，<code>losslessRate</code> 恒 1 是构造性结论</td>
+      <td class="no">未修</td>
+      <td><code>run-metrics.mjs</code> 未被触碰；<code>metrics-latest.json</code> 仍为占位输出，条目 notes 逐条写着「编辑前=编辑后=同一文件」</td>
+    </tr>
+    <tr>
+      <td class="mono">P1</td>
+      <td>装配根错位：契约要求 <code>platforms/web/composition.ts</code>，实际在 <code>App.ts</code></td>
+      <td class="no">未修</td>
+      <td><code>src/platforms/web/</code> 仍只有 0 B 的 <code>.gitkeep</code>；<code>createApp()</code> 在 <code>App.ts:886</code>；构造器 <code>App.ts:70</code> 只注入 <code>{ io }</code></td>
+    </tr>
+    <tr>
+      <td class="mono">P1b</td>
+      <td>缺 <code>app → adapters</code> 的 lint 禁令</td>
+      <td class="no">未修</td>
+      <td><code>.eslintrc.cjs:37-40</code> 的 zones 仍只含 <code>core→app</code> 与 <code>core→adapters</code>；<code>App.ts:17-19</code> 直接 import 三个适配器</td>
+    </tr>
+    <tr>
+      <td class="mono">P2</td>
+      <td>三个端口有定义无实现</td>
+      <td class="no">未修</td>
+      <td><code>PasteSanitizer</code>／<code>DraftStorage</code>／<code>LocalFileGateway</code> 全仓库仅出现在 <code>ports.ts</code>（216／203／209 行），无实现类、无调用点</td>
+    </tr>
+    <tr>
+      <td class="mono">P2b</td>
+      <td><code>draft</code> 存在两套互不兼容的 <code>DraftRecord</code></td>
+      <td class="no">未修</td>
+      <td><code>ports.ts:196</code> 为 <code>{id,title,updatedAt,sourceSnapshot,preview}</code>；<code>core/stores/draft.ts:5</code> 为 <code>{schemaVersion,html,title,updatedAt}</code>，字段无法互相满足</td>
+    </tr>
+    <tr>
+      <td class="mono">P3</td>
+      <td>缩放 <code>up()</code> 无条件 push，单击即固化 px 并占一步撤销</td>
+      <td class="no">未修</td>
+      <td><code>App.ts:653-666</code> 仍直接 <code>session.history.push(new ResizeCommand(...))</code>，无 <code>moved</code> 判断（拖拽路径有）</td>
+    </tr>
+    <tr>
+      <td class="mono">P3b</td>
+      <td>空桩与调试残留文件</td>
+      <td class="no">未清理</td>
+      <td><code>MoveableInteractionAdapter.ts</code> 仅 123 B（内容为 <code>export {}</code>）；根目录仍留 <code>_patch.ps1</code>、<code>dbg2.png</code>、<code>out.txt</code>、<code>test_out.txt</code>、<code>probe-file.mjs</code>、<code>probe-shot.png</code></td>
+    </tr>
+    <tr>
+      <td class="mono">—</td>
+      <td>首屏入口无 e2e 覆盖</td>
+      <td class="ok">已修</td>
+      <td>新增 <code>startpage.spec.ts</code>，4 用例通过、1 用例 skip</td>
+    </tr>
+    <tr>
+      <td class="mono">—</td>
+      <td>双 iframe 安全矩阵与契约一致</td>
+      <td class="ok">仍守住</td>
+      <td><code>CanvasHost.ts:23</code> 逐字 <code>allow-same-origin</code>；<code>IFramePreviewSandbox.ts:27</code> 逐字 <code>allow-scripts</code>；<code>core/**</code> 零第三方 import</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>四、架构图 1 · 分层与依赖方向</h2>
+<div class="fig">
+<svg width="100%" viewBox="0 0 680 726" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>易页 EasyPage 分层架构与契约偏差</title>
+<desc>main.ts 经 createApp 构造 App 外壳层；外壳依赖 core 领域层并由 adapters 实现端口；契约要求的 platforms/web/composition.ts 为空，且缺少 app 到 adapters 的 lint 禁令。</desc>
+<defs>
+<marker id="ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<style>
+.d-th{font-family:inherit;font-size:14px;font-weight:500}
+.d-ts{font-family:inherit;font-size:12px;font-weight:400}
+.d-tm{font-family:inherit;font-size:13px;font-weight:500}
+</style>
+
+<rect x="40" y="40" width="120" height="56" rx="8" fill="#E6F1FB" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="100" y="58" fill="#0C447C" text-anchor="middle" dominant-baseline="central">main.ts</text>
+<text class="d-ts" x="100" y="76" fill="#185FA5" text-anchor="middle" dominant-baseline="central">入口 · 挂载</text>
+<path d="M160 68 L174 68" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar1)"/>
+<rect x="176" y="40" width="224" height="56" rx="8" fill="#E6F1FB" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="288" y="58" fill="#0C447C" text-anchor="middle" dominant-baseline="central">createApp()</text>
+<text class="d-ts" x="288" y="76" fill="#185FA5" text-anchor="middle" dominant-baseline="central">App.ts:886 · 装配根所在</text>
+<path d="M288 96 L288 118" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar1)"/>
+
+<rect x="40" y="120" width="600" height="128" rx="20" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="d-tm" x="64" y="142" fill="#185FA5" dominant-baseline="central">src/app/ · 外壳层与 UI</text>
+<rect x="64" y="162" width="132" height="56" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="d-th" x="130" y="180" fill="#791F1F" text-anchor="middle" dominant-baseline="central">App.ts</text>
+<text class="d-ts" x="130" y="198" fill="#A32D2D" text-anchor="middle" dominant-baseline="central">装配根 ①②</text>
+<rect x="204" y="162" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="270" y="180" fill="#0C447C" text-anchor="middle" dominant-baseline="central">panels/</text>
+<text class="d-ts" x="270" y="198" fill="#185FA5" text-anchor="middle" dominant-baseline="central">样式·元素·图层</text>
+<rect x="344" y="162" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="410" y="180" fill="#0C447C" text-anchor="middle" dominant-baseline="central">canvas/</text>
+<text class="d-ts" x="410" y="198" fill="#185FA5" text-anchor="middle" dominant-baseline="central">画布 · 覆盖层</text>
+<rect x="484" y="162" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="550" y="180" fill="#0C447C" text-anchor="middle" dominant-baseline="central">keymap</text>
+<text class="d-ts" x="550" y="198" fill="#185FA5" text-anchor="middle" dominant-baseline="central">快捷键 · 右键</text>
+
+<path d="M240 248 L240 270" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar1)"/>
+<text class="d-ts" x="252" y="259" fill="#185FA5" dominant-baseline="central">依赖</text>
+
+<rect x="40" y="272" width="600" height="182" rx="20" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="d-tm" x="64" y="294" fill="#185FA5" dominant-baseline="central">src/core/ · 领域层（零第三方 import）</text>
+<rect x="64" y="314" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="130" y="332" fill="#0C447C" text-anchor="middle" dominant-baseline="central">ports.ts</text>
+<text class="d-ts" x="130" y="350" fill="#185FA5" text-anchor="middle" dominant-baseline="central">22 个端口契约</text>
+<rect x="204" y="314" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="270" y="332" fill="#0C447C" text-anchor="middle" dominant-baseline="central">model</text>
+<text class="d-ts" x="270" y="350" fill="#185FA5" text-anchor="middle" dominant-baseline="central">会话·选择·锁</text>
+<rect x="344" y="314" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="410" y="332" fill="#0C447C" text-anchor="middle" dominant-baseline="central">commands</text>
+<text class="d-ts" x="410" y="350" fill="#185FA5" text-anchor="middle" dominant-baseline="central">命令·历史栈</text>
+<rect x="484" y="314" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="550" y="332" fill="#0C447C" text-anchor="middle" dominant-baseline="central">interaction</text>
+<text class="d-ts" x="550" y="350" fill="#185FA5" text-anchor="middle" dominant-baseline="central">缩放 · 吸附</text>
+<rect x="64" y="378" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="130" y="396" fill="#0C447C" text-anchor="middle" dominant-baseline="central">layout</text>
+<text class="d-ts" x="130" y="414" fill="#185FA5" text-anchor="middle" dominant-baseline="central">对齐 · 分布</text>
+<rect x="204" y="378" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="270" y="396" fill="#0C447C" text-anchor="middle" dominant-baseline="central">style</text>
+<text class="d-ts" x="270" y="414" fill="#185FA5" text-anchor="middle" dominant-baseline="central">盒模型 · 文本</text>
+<rect x="344" y="378" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="410" y="396" fill="#0C447C" text-anchor="middle" dominant-baseline="central">inline</text>
+<text class="d-ts" x="410" y="414" fill="#185FA5" text-anchor="middle" dominant-baseline="central">包裹 · 内联命令</text>
+<rect x="484" y="378" width="132" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="550" y="396" fill="#0C447C" text-anchor="middle" dominant-baseline="central">serialize</text>
+<text class="d-ts" x="550" y="414" fill="#185FA5" text-anchor="middle" dominant-baseline="central">剥离残留 · 审计</text>
+
+<path d="M440 478 L440 456" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar1)"/>
+<text class="d-ts" x="452" y="467" fill="#185FA5" dominant-baseline="central">实现</text>
+
+<rect x="40" y="478" width="600" height="112" rx="20" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="d-tm" x="64" y="500" fill="#185FA5" dominant-baseline="central">src/adapters/ · 端口实现</text>
+<rect x="64" y="516" width="176" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="152" y="534" fill="#0C447C" text-anchor="middle" dominant-baseline="central">DomParserIO</text>
+<text class="d-ts" x="152" y="552" fill="#185FA5" text-anchor="middle" dominant-baseline="central">解析 · 序列化</text>
+<rect x="252" y="516" width="176" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="340" y="534" fill="#0C447C" text-anchor="middle" dominant-baseline="central">IFramePreviewSandbox</text>
+<text class="d-ts" x="340" y="552" fill="#185FA5" text-anchor="middle" dominant-baseline="central">预览隔离 · bridge</text>
+<rect x="440" y="516" width="176" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="528" y="534" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SelfInteraction</text>
+<text class="d-ts" x="528" y="552" fill="#185FA5" text-anchor="middle" dominant-baseline="central">自研交互 · 已替代</text>
+
+<rect x="40" y="614" width="600" height="92" rx="12" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="d-tm" x="64" y="636" fill="#791F1F" dominant-baseline="central">契约偏差 3 处 · 本次收尾未处理</text>
+<text class="d-ts" x="64" y="658" fill="#A32D2D" dominant-baseline="central">① 期望 src/platforms/web/composition.ts，实际空目录（App.ts:886 承担）</text>
+<text class="d-ts" x="64" y="676" fill="#A32D2D" dominant-baseline="central">② 无 app→adapters lint 禁令，App.ts:17-19 直连 3 个适配器</text>
+<text class="d-ts" x="64" y="694" fill="#A32D2D" dominant-baseline="central">③ draft 两套 DraftRecord：ports.ts:196 与 stores/draft.ts:5 不兼容</text>
+</svg>
+</div>
+<p class="cap">图 1 · 五层结构与依赖方向。红色为偏差落点：装配根事实在 <code>App.ts</code>，而契约要求的 <code>platforms/web/composition.ts</code> 是空目录；<code>core → app/adapters</code> 有 lint 拦截，<code>app → adapters</code> 没有。</p>
+
+<h2>五、架构图 2 · 运行时主链路与双 iframe 隔离</h2>
+<div class="fig">
+<svg width="100%" viewBox="0 0 680 676" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>易页 EasyPage 运行时主链路与双 iframe 隔离</title>
+<desc>导入经 DomParserIO 解析进入编辑帧，变更走 core 命令层与历史栈，导出前剥离编辑器残留并在残留非空时阻断；预览走独立 iframe 与桥接脚本，超时降级为 null。</desc>
+<defs>
+<marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text class="d-tm" x="40" y="52" fill="#185FA5" dominant-baseline="central">编辑主链路</text>
+<text class="d-tm" x="360" y="52" fill="#185FA5" dominant-baseline="central">预览隔离链路</text>
+
+<rect x="40" y="64" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="82" fill="#0C447C" text-anchor="middle" dominant-baseline="central">导入：粘贴 / 文件 / 空白</text>
+<text class="d-ts" x="190" y="100" fill="#185FA5" text-anchor="middle" dominant-baseline="central">startpage.spec.ts 已覆盖</text>
+<path d="M190 120 L190 138" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="40" y="140" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="158" fill="#0C447C" text-anchor="middle" dominant-baseline="central">DomParserIO.parse</text>
+<text class="d-ts" x="190" y="176" fill="#185FA5" text-anchor="middle" dominant-baseline="central">原生 DOMParser · 无三方依赖</text>
+<path d="M190 196 L190 214" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="40" y="216" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="234" fill="#0C447C" text-anchor="middle" dominant-baseline="central">编辑帧 iframe</text>
+<text class="d-ts" x="190" y="252" fill="#185FA5" text-anchor="middle" dominant-baseline="central">allow-same-origin（禁脚本）</text>
+<path d="M190 272 L190 290" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="40" y="292" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="310" fill="#0C447C" text-anchor="middle" dominant-baseline="central">命令层 + HistoryStack</text>
+<text class="d-ts" x="190" y="328" fill="#185FA5" text-anchor="middle" dominant-baseline="central">每次变更 = 一条 Command</text>
+<path d="M190 348 L190 366" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="40" y="368" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="386" fill="#0C447C" text-anchor="middle" dominant-baseline="central">stripArtifacts 序列化</text>
+<text class="d-ts" x="190" y="404" fill="#185FA5" text-anchor="middle" dominant-baseline="central">残留非空 → 抛错阻断</text>
+<path d="M190 424 L190 442" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="40" y="444" width="300" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="190" y="462" fill="#0C447C" text-anchor="middle" dominant-baseline="central">下载 / 复制 / 草稿</text>
+<text class="d-ts" x="190" y="480" fill="#185FA5" text-anchor="middle" dominant-baseline="central">EP.IO.RESIDUE 优先阻断</text>
+
+<rect x="360" y="64" width="280" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="500" y="82" fill="#0C447C" text-anchor="middle" dominant-baseline="central">预览帧 iframe</text>
+<text class="d-ts" x="500" y="100" fill="#185FA5" text-anchor="middle" dominant-baseline="central">srcdoc + allow-scripts</text>
+<path d="M500 120 L500 138" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="360" y="140" width="280" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="500" y="158" fill="#0C447C" text-anchor="middle" dominant-baseline="central">bridge.ts 注入</text>
+<text class="d-ts" x="500" y="176" fill="#185FA5" text-anchor="middle" dominant-baseline="central">随 srcdoc 打入帧内</text>
+<path d="M500 196 L500 214" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="360" y="216" width="280" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="500" y="234" fill="#0C447C" text-anchor="middle" dominant-baseline="central">postMessage 提取</text>
+<text class="d-ts" x="500" y="252" fill="#185FA5" text-anchor="middle" dominant-baseline="central">校验 event.source</text>
+<path d="M500 272 L500 290" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#ar2)"/>
+<rect x="360" y="292" width="280" height="56" rx="8" fill="#FFFFFF" stroke="#85B7EB" stroke-width="0.5"/>
+<text class="d-th" x="500" y="310" fill="#0C447C" text-anchor="middle" dominant-baseline="central">2s 超时 → null</text>
+<text class="d-ts" x="500" y="328" fill="#185FA5" text-anchor="middle" dominant-baseline="central">降级不阻断主链路</text>
+
+<rect x="40" y="524" width="600" height="56" rx="12" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="d-ts" x="64" y="543" fill="#0C447C" dominant-baseline="central">编辑帧 sandbox 逐字 allow-same-origin（CanvasHost.ts:23）</text>
+<text class="d-ts" x="64" y="563" fill="#185FA5" dominant-baseline="central">预览帧 sandbox 逐字 allow-scripts（IFramePreviewSandbox.ts:27）</text>
+
+<rect x="40" y="600" width="600" height="56" rx="12" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="d-ts" x="64" y="619" fill="#791F1F" dominant-baseline="central">已知缺陷 · App.ts:653 缩放 up() 无条件 push ResizeCommand</text>
+<text class="d-ts" x="64" y="639" fill="#A32D2D" dominant-baseline="central">单击手柄不拖动 → width:auto 固化为 inline px，且占一步撤销</text>
+</svg>
+</div>
+<p class="cap">图 2 · 一条主链路（导入 → 解析 → 编辑帧 → 命令 → 剥离残留 → 交付）与一条隔离链路（预览帧 → 桥接 → 提取 → 超时降级）。安全矩阵是当前工程唯一逐字兑现契约的部分。</p>
+
+<h2>六、判断与建议</h2>
+<div class="callout">
+  <p><strong>先修度量，再谈其它。</strong>收尾重跑了一次门禁，但门禁脚本本身仍把同一字符串解析两次，<code>losslessRate</code> 恒 1 是构造出来的。只要不动 <code>run-metrics.mjs</code>，后面每一张卡的「不劣化」都还是没有证据的。</p>
+  <p><strong>契约应当描述现状，不是愿望单。</strong><code>PasteSanitizer</code> 连粘贴入口都没有，<code>DraftStorage</code> 与现有 <code>stores/draft.ts</code> 字段互斥——这两个端口应直接从 <code>ports.ts</code> 删除，而不是补实现。要保留就补实现，二选一，不留第三种状态。</p>
+  <p><strong>装配根与 e2e 夹具的收尾要一起做。</strong>补 <code>platforms/web/composition.ts</code> 的成本，主要花在把 <code>App.ts</code> 的 20 个字段剥出去；这一步顺带能解掉 <code>app → adapters</code> 的越界依赖。</p>
+</div>
+<div class="callout amber">
+  <p><strong>账要还但不阻塞主线</strong>：样本库 10 个（契约要 20–30）、<code>idb</code> 与 <code>parse5</code> 已在 <code>package.json</code> 声明但全仓库零 import、本地未初始化 Git（「一卡一分支一 PR + 回滚 tag」目前没有载体，本次改动无法出 diff 就是直接后果）。</p>
+</div>
+
+<footer>
+  核查方式：文件系统 mtime 分界（审阅报告落盘 12:39）+ 内容比对 + 实测复跑（<code>tsc --noEmit</code> 0 error、<code>vitest</code> 单测全绿、<code>playwright</code> 55 passed / 1 skipped）。<br>
+  全程未修改任何源码，未初始化 Git，未产生新的提交记录。
+</footer>
+
+</div>
+</body>
+</html>

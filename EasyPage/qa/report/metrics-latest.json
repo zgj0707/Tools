@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-09-22T04:03:12.266Z",
+  "totals": {
+    "hitRate": null,
+    "losslessRate": 1,
+    "residueCount": 0
+  },
+  "perFixture": [
+    {
+      "id": "01-script-carousel",
+      "category": "脚本轮播",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "02-shadowdom",
+      "category": "ShadowDOM",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "03-svg-table",
+      "category": "SVG 表格",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "04-inline-image",
+      "category": "内联图片",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "05-ai-landing",
+      "category": "AI 生成页",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "06-malformed",
+      "category": "残缺 HTML",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "07-large",
+      "category": "大页精简版",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "08-inline-events",
+      "category": "内联事件安全",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "09-word-fragment",
+      "category": "文本片段",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    },
+    {
+      "id": "10-flex-grid",
+      "category": "Flex-Grid 布局",
+      "hit": null,
+      "losslessRate": 1,
+      "residue": [],
+      "notes": "编辑前=编辑后=同一文件，lossless 为真实解析后逐位比较；与原始一致"
+    }
+  ],
+  "notes": "未接入编辑器，hitRate 基线为占位 null；losslessRate 为跨样本合并的 token 一致率；residueCount 为六类注入物命中总数。"
+}

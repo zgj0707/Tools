@@ -1,0 +1,66 @@
+// 所有用户可见文案（契约 01 §3/§9）。代码中只引用 key，不硬编码中文字符串。
+
+export const messages = {
+  'app.title': '易页 EasyPage',
+
+  'button.import': '导入 HTML',
+  'button.blank': '新建空白',
+  'button.preview': '预览',
+  'button.export': '导出 HTML',
+  'button.copyHtml': '复制 HTML',
+  'toast.clipboardFail': '复制失败，请用下载导出',
+  'toast.draftSaved': '草稿已保存',
+  'toast.draftTooLarge': '内容过大，无法自动保存草稿',
+  'toast.draftFail': '草稿保存失败',
+  'button.chooseFile': '选择文件',
+  'button.resetTransform': '重置位移',
+  'button.formatPainter': '格式刷',
+
+  'placeholder.pasteHtml': '在此粘贴 HTML…',
+
+  'toast.importOk': '导入成功',
+  'toast.importEmpty': '请先粘贴或选择 HTML 文件',
+  'toast.importFailed': '导入失败',
+  'toast.previewOn': '预览已打开（脚本可运行）',
+  'toast.previewOff': '已返回编辑',
+  'toast.exportOk': '导出成功',
+  'toast.residue': '导出失败：检测到编辑器残留',
+  'toast.exportFailed': '导出失败',
+  'toast.noDocument': '请先导入 HTML',
+  'toast.undo': '已撤销',
+  'toast.redo': '已重做',
+  'toast.locked': '该元素已锁定',
+  'toast.alignNeed2': '对齐需要至少 2 个元素',
+  'toast.alignNeed3': '等距分布需要至少 3 个元素',
+  'toast.alignCrossParent': '仅支持同父元素对齐/分布',
+  'toast.saveLater': '保存将在后续版本提供',
+  'toast.richLater': '选区格式将在后续版本支持',
+  'toast.unsupported': '该选区暂不支持格式化',
+  'toast.nonEditable': '该元素不可编辑',
+  'toast.blockOnly': '该元素仅可整体移动/隐藏',
+  'toast.listMulti': '暂不支持多选转换列表',
+  'toast.listUnsupported': '暂不支持此块转换为列表',
+
+  'panel.style.title': '样式',
+  'panel.style.mixed': '混合',
+  'panel.style.fontFamily': '字体',
+  'panel.style.fontSize': '字号',
+  'panel.style.fontWeight': '字重',
+  'panel.style.color': '文字颜色',
+  'panel.style.bgColor': '背景色',
+  'panel.style.align': '对齐',
+  'panel.style.lineHeight': '行高',
+  'panel.style.letterSpacing': '字距',
+  'panel.style.list': '列表',
+  'panel.style.toList': '转为列表',
+  'panel.style.unlist': '取消列表',
+  'panel.style.link': '链接',
+  'panel.style.setLink': '设置链接',
+  'panel.style.clearLink': '清除链接',
+} as const;
+
+export type MessageKey = keyof typeof messages;
+
+export function t(key: MessageKey): string {
+  return messages[key];
+}

@@ -1,0 +1,10 @@
+{
+  "name": "spike-grapesjs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "grapesjs": "0.23.6",
+    "jsdom": "24.1.1"
+  }
+}
