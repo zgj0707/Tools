@@ -101,3 +101,37 @@ test('无损：百分比元素选中后手柄隐藏，导出仍保留百分比�
   expect(html).toContain('width:50%');
   expect(html).not.toMatch(/style="[^"]*width:\s*\d+px/);
 });
+
+// 2026-09-22 回归：单击手柄（down→up 之间没有任何 move）不该入历史。
+// 修复前 up() 无条件 push ResizeCommand，撤销一步只退掉这个"幽灵"命令，
+// 用户看到的现象是「按一次 Ctrl+Z 毫无变化」。
+test('缩放：单击手柄不拖动不占用撤销步', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('textarea').fill(fixture);
+  await page.getByRole('button', { name: '导入 HTML' }).click();
+
+  const editFrame = page.frameLocator('#ep-canvas-frame');
+  const card = editFrame.locator('.card');
+  const transform = () => card.evaluate((el) => (el as HTMLElement).style.transform);
+
+  // 真实编辑：方向键微移一步（入一条 MoveCommand）
+  await card.click();
+  await page.keyboard.press('ArrowRight');
+  expect(await transform()).toContain('translate');
+
+  // 单击 se 手柄，但绝不派发 pointermove
+  await page.locator('#ep-overlay-root [data-dir="se"]').evaluate((h) => {
+    const r = h.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    h.dispatchEvent(new PointerEvent('pointerdown', { clientX: cx, clientY: cy, bubbles: true }));
+    window.dispatchEvent(
+      new PointerEvent('pointerup', { clientX: cx, clientY: cy, bubbles: true }),
+    );
+  });
+
+  // 撤销一次必须退掉位移，而不是退掉一个幽灵 ResizeCommand
+  await page.locator('h1').first().click();
+  await page.keyboard.press('Control+z');
+  expect(await transform()).not.toContain('translate');
+});

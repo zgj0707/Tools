@@ -15,7 +15,7 @@ export interface EditorSession {
 
 // §4 EditorSession.meta —— T003 冻结形状
 export interface SessionMeta {
-  readonly sourceKind: 'upload' | 'paste' | 'blank'; // 导入来源
+  readonly sourceKind: 'upload' | 'paste' | 'draft' | 'blank'; // 导入来源（draft = 从草稿恢复，T117）
   readonly fileName: string; // 原始文件名或页面标题，用作导出默认名
   readonly originalSource: string; // 原始导入 HTML 快照（无损对比/重置基线）
   readonly warnings: ParseWarning[]; // 解析容错提示
@@ -192,27 +192,10 @@ export interface PreviewSandbox {
   destroy(): void;
 }
 
-// ── 存储 / 本地文件 ─────────────────────────────────────────
-export interface DraftRecord {
-  id: string;
-  title: string;
-  updatedAt: number;
-  sourceSnapshot: string;
-  preview?: string;
-}
-export interface DraftStorage {
-  save(d: DraftRecord): Promise<void>;
-  list(): Promise<DraftRecord[]>;
-  load(id: string): Promise<DraftRecord | null>;
-  remove(id: string): Promise<void>;
-}
-export interface LocalFileGateway {
-  isSupported(): boolean; // File System Access 能力检测
-  open(): Promise<{ name: string; content: string } | null>;
-  save(name: string, content: string): Promise<'saved' | 'download-fallback'>;
-}
-
-// ── 粘贴净化 ────────────────────────────────────────────────
-export interface PasteSanitizer {
-  cleanFragment(html: string): string; // 白名单标签/样式，去除 Word 专有标记与脚本
-}
+// ── 存储 / 本地文件 / 粘贴净化 ───────────────────────────────
+// 2026-09-22 与实现对齐（原声明的四个端口无任何实现与引用，属"许愿池"式契约，已删除）：
+//   · 草稿      → core/stores/draft.ts 的纯函数 + localStorage（当前单一实现，未抽端口）
+//   · 本地文件  → <input type="file"> 读入 + Blob 下载回退（未用 File System Access，
+//                 避免"仅 Chromium 可用"的能力差异；需要覆写保存时再抽端口并实现）
+//   · 粘贴净化  → core/io/sanitizeImport.ts 纯函数（导入路径统一调用）
+// 原则：契约描述当下交付，不描述愿望。出现第二个实现时再抽端口。

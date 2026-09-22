@@ -13,6 +13,8 @@ import { INTERACTION } from '../constants';
 import { isResizable } from '../core/interaction/resizeGuard';
 import { clearTranslate } from '../core/interaction/transform';
 import { computeResize, type ResizeDirection } from '../core/interaction/resize';
+import { sanitizeImport } from '../core/io/sanitizeImport';
+import { auditResources } from '../core/serialize/resourceAudit';
 import { frameToOverlay, rectOf, rectsIntersect } from './canvas/geom';
 import { DomParserIO } from '../adapters/dom/DomParserIO';
 import { IFramePreviewSandbox } from '../adapters/preview/IFramePreviewSandbox';
@@ -110,9 +112,9 @@ export class App {
       return b;
     };
     alignRow.append(
-      mkAlign('左', 'left'), mkAlign('右', 'right'), mkAlign('居中', 'hcenter'),
-      mkAlign('顶', 'top'), mkAlign('底', 'bottom'), mkAlign('垂直居中', 'vcenter'),
-      mkAlign('水平等距', 'hdistribute'), mkAlign('垂直等距', 'vdistribute'),
+      mkAlign(t('align.left'), 'left'), mkAlign(t('align.right'), 'right'), mkAlign(t('align.hcenter'), 'hcenter'),
+      mkAlign(t('align.top'), 'top'), mkAlign(t('align.bottom'), 'bottom'), mkAlign(t('align.vcenter'), 'vcenter'),
+      mkAlign(t('align.hdistribute'), 'hdistribute'), mkAlign(t('align.vdistribute'), 'vdistribute'),
     );
     this.root.appendChild(alignRow);
 
@@ -133,6 +135,18 @@ export class App {
     this.fileInput.addEventListener('change', () => this.importFromFile());
     pasteRow.appendChild(this.fileInput);
     this.root.appendChild(pasteRow);
+
+    // 草稿区（T117）：有草稿时渲染「继续 / 删除」，无草稿只留占位。
+    // 注意：这一段曾在重构中丢失（draftRow 只声明未挂载），导致 Ctrl+S 存下的草稿
+    // 在重新打开后没有任何恢复入口 —— 这是「草稿续开」失效的根因。
+    this.draftRow = document.createElement('div');
+    this.draftRow.id = 'ep-draft-row';
+    this.draftRow.className = 'ep__draft-row';
+    this.draftRow.style.display = 'flex';
+    this.draftRow.style.gap = '8px';
+    this.draftRow.style.alignItems = 'center';
+    this.root.appendChild(this.draftRow);
+    this.refreshDraftList();
 
     // 左元素面板 +（编辑 iframe + overlay）+ 右侧样式面板
     const outerRow = document.createElement('div');
@@ -177,7 +191,6 @@ export class App {
       this.clearSelection();
     });
     this.canvas.onHover((el) => this.layoutHover(el));
-    this.canvas.onHover((el: Element) => this.layoutHover(el));
     this.canvas.onSelect((el: Element, shift: boolean) => this.onCanvasSelect(el, shift));
     this.canvas.onBlankDown((e: PointerEvent) => this.onBlankDown(e));
     this.marquee = new Marquee(this.canvas.overlay);
@@ -185,10 +198,13 @@ export class App {
     this.menu = new ContextMenu(this.root);
     this.linkPopover = new LinkPopover(this.root);
     this.root.addEventListener('contextmenu', (e) => { e.preventDefault(); this.showMenu(e.clientX, e.clientY); });
-    // 拖拽微移适配器：committed 时 push 一个 MoveCommand
+    // 拖拽微移适配器：只在 committed 时 push 一个 MoveCommand
     this.interaction = new SelfInteractionAdapter(this.canvas.overlay, this.canvas.frame);
     this.interaction.isLocked = (el) => this.lock.isLocked(el);
-    this.interaction.onDragMove(({ dx, dy }) => {
+    this.interaction.onDragMove(({ dx, dy, committed }) => {
+      // 端口语义（ports.ts DragMoveEvent）：committed=true 才代表「一次拖拽的提交」。
+      // 漏判会让每次 pointermove 都入栈，撤销一步只退一帧位移。
+      if (!committed) return;
       const session = this.session;
       const sel = session?.selection.elements[0];
       if (!session || !sel) return;
@@ -258,20 +274,23 @@ export class App {
 
   private async importSource(
     source: string,
-    kind: 'upload' | 'paste',
+    kind: SessionMeta['sourceKind'],
     fileName = 'edited.html',
   ): Promise<void> {
     if (!source.trim()) {
       this.toast('toast.importEmpty');
       return;
     }
-    const parsed = this.io.parse(source);
-    // 用原始 HTML 经 srcdoc 写入编辑 iframe（脚本因无 allow-scripts 不执行），并以其 contentDocument 为事实源
-    const doc = await this.canvas.loadHtml(source);
+    // 导入净化（T119）：剥掉导出后会生效的危险标记（on* / javascript: / srcdoc / meta refresh 等）。
+    // <script> 按契约保留——它在编辑帧不执行（sandbox 无 allow-scripts），预览帧另起同源隔离的沙箱。
+    const clean = sanitizeImport(source);
+    const parsed = this.io.parse(clean);
+    // 净化后的 HTML 经 srcdoc 写入编辑 iframe，并以其 contentDocument 为事实源
+    const doc = await this.canvas.loadHtml(clean);
     const meta: SessionMeta = {
       sourceKind: kind,
       fileName,
-      originalSource: source,
+      originalSource: clean,
       warnings: parsed.warnings,
       externalResources: parsed.externalResources,
       dirty: false,
@@ -354,10 +373,10 @@ export class App {
     const single = els.length === 1 ? els[0]! : null;
     const locked = single ? this.lock.isLocked(single) : false;
     const items = [
-      { id: 'delete', label: '删除', enabled: els.length > 0 && !locked },
-      { id: 'duplicate', label: '复制', enabled: !!single && !locked },
-      { id: 'reset', label: '重置位移', enabled: !!single && !locked },
-      { id: 'toggleLock', label: locked ? '解锁' : '锁定', enabled: !!single },
+      { id: 'delete', label: t('menu.delete'), enabled: els.length > 0 && !locked },
+      { id: 'duplicate', label: t('menu.duplicate'), enabled: !!single && !locked },
+      { id: 'reset', label: t('menu.reset'), enabled: !!single && !locked },
+      { id: 'toggleLock', label: locked ? t('menu.unlock') : t('menu.lock'), enabled: !!single },
     ];
     this.menu.show(x, y, items, { onPick: (id) => {
       if (id === 'delete') this.deleteSelected();
@@ -654,13 +673,17 @@ export class App {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       const cur = rectOf(el);
-      session.history.push(
-        new ResizeCommand(
-          [el],
-          { width: Math.round(cur.width), height: Math.round(cur.height) },
-          prevBox,
-        ),
-      );
+      const w = Math.round(cur.width);
+      const h = Math.round(cur.height);
+      // 尺寸没变（单击手柄未拖动，或拖出去又拖回原点）⇒ 回滚临时内联样式，且不入历史。
+      // 否则 width:auto 的元素会被固化成等值 px，还白占一步撤销。
+      if (w === Math.round(startSize.width) && h === Math.round(startSize.height)) {
+        (el as HTMLElement).style.width = prevBox.width ?? '';
+        (el as HTMLElement).style.height = prevBox.height ?? '';
+        this.layoutOverlay();
+        return;
+      }
+      session.history.push(new ResizeCommand([el], { width: w, height: h }, prevBox));
       session.markDirty();
       this.layoutOverlay();
     };
@@ -729,7 +752,7 @@ export class App {
   }
 
 
-  // 鈹€鈹€ 棰勮 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  // ── 预览 ──────────────────────────────────────────────────
   private editScrollX = 0;
   private editScrollY = 0;
   private togglePreview(): void {
@@ -801,30 +824,32 @@ export class App {
       });
     }
     this.download(html, this.session.meta.fileName || 'edited.html');
-    this.toast('toast.exportOk');
+    // 导出资源审计（T116）：blob: 与外链资源在换机/离线场景会失效，只提示不阻断导出。
+    const risky = auditResources(this.session.doc).filter((w) => w.kind !== 'data').length;
+    this.toast(risky > 0 ? 'toast.exportOkWithExternal' : 'toast.exportOk');
   }
 
+  /** 渲染草稿区：无草稿只留占位；有草稿给「继续 / 删除」入口。 */
   private refreshDraftList(): void {
+    this.draftRow.textContent = '';
     const rec = loadDraft();
-    this.draftRow.innerHTML = '';
     if (!rec) {
-      this.draftRow.textContent = '无草稿';
+      this.draftRow.textContent = t('draft.none');
       return;
     }
     const span = document.createElement('span');
-    span.textContent = `最近草稿：${rec.title} ${new Date(rec.updatedAt).toLocaleString()}`;
-    const resume = this.makeButton('继续', () => {
-      this.textarea.value = rec.html;
-      this.importFromTextarea();
+    span.textContent = `${t('draft.recentPrefix')}${rec.title} ${new Date(rec.updatedAt).toLocaleString()}`;
+    const resume = this.makeButton(t('button.resume'), () => {
+      void this.importSource(rec.html, 'draft', rec.title).catch((err) => this.handleError(err));
     });
-    const del = this.makeButton('删除', () => { clearDraft(); this.refreshDraftList(); });
+    const del = this.makeButton(t('button.delete'), () => { clearDraft(); this.refreshDraftList(); });
     this.draftRow.append(span, resume, del);
   }
 
   private loadBlank(): void {
+    // 空白模板属「文档内容」而非界面文案，按契约不进 i18n
     const blank = '<!DOCTYPE html><html><head><title>未命名</title></head><body><p>开始编辑…</p></body></html>';
-    const ta = document.querySelector('textarea');
-    if (ta) ta.value = blank;
+    this.textarea.value = blank;
     this.importFromTextarea();
   }
 
@@ -850,8 +875,11 @@ export class App {
     const { html, residue } = this.io.serialize(this.session.doc, { stripEditorArtifacts: true });
     if (residue.length > 0) { this.toast('toast.residue'); return; }
     const r = saveDraft(html, this.session.meta.fileName || '未命名');
-    if (r === 'ok') this.toast('toast.draftSaved');
-    else if (r === 'too-large') this.toast('toast.draftTooLarge');
+    if (r === 'ok') {
+      this.toast('toast.draftSaved');
+      // 同步刷新草稿区：否则存完草稿，界面上仍显示「无草稿」，用户无法当场恢复
+      this.refreshDraftList();
+    } else if (r === 'too-large') this.toast('toast.draftTooLarge');
     else this.toast('toast.draftFail');
   }
 

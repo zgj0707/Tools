@@ -15,6 +15,29 @@ export const messages = {
   'button.chooseFile': '选择文件',
   'button.resetTransform': '重置位移',
   'button.formatPainter': '格式刷',
+  'button.resume': '继续',
+  'button.delete': '删除',
+
+  // 草稿区（T117）
+  'draft.none': '无草稿',
+  'draft.recentPrefix': '最近草稿：',
+
+  // 对齐 / 分布工具条（T113）
+  'align.left': '左',
+  'align.right': '右',
+  'align.hcenter': '居中',
+  'align.top': '顶',
+  'align.bottom': '底',
+  'align.vcenter': '垂直居中',
+  'align.hdistribute': '水平等距',
+  'align.vdistribute': '垂直等距',
+
+  // 右键菜单（T111）
+  'menu.delete': '删除',
+  'menu.duplicate': '复制',
+  'menu.reset': '重置位移',
+  'menu.lock': '锁定',
+  'menu.unlock': '解锁',
 
   'placeholder.pasteHtml': '在此粘贴 HTML…',
 
@@ -24,6 +47,7 @@ export const messages = {
   'toast.previewOn': '预览已打开（脚本可运行）',
   'toast.previewOff': '已返回编辑',
   'toast.exportOk': '导出成功',
+  'toast.exportOkWithExternal': '导出成功（含外链资源，离线打开可能失效）',
   'toast.residue': '导出失败：检测到编辑器残留',
   'toast.exportFailed': '导出失败',
   'toast.noDocument': '请先导入 HTML',
@@ -33,7 +57,6 @@ export const messages = {
   'toast.alignNeed2': '对齐需要至少 2 个元素',
   'toast.alignNeed3': '等距分布需要至少 3 个元素',
   'toast.alignCrossParent': '仅支持同父元素对齐/分布',
-  'toast.saveLater': '保存将在后续版本提供',
   'toast.richLater': '选区格式将在后续版本支持',
   'toast.unsupported': '该选区暂不支持格式化',
   'toast.nonEditable': '该元素不可编辑',

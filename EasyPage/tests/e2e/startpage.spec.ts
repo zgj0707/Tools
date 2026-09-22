@@ -53,13 +53,18 @@ test('上传入口 filechooser', async ({ page }) => {
   await expect(page.frameLocator('#ep-canvas-frame').locator('#p1')).toHaveText('hi');
 });
 
-test.skip('草稿续开', async ({ page }) => {
+// 2026-09-22 转正：原先 skip 的根因是 draftRow 只声明未挂载，草稿区从未渲染，
+// 「继续」按钮在 DOM 里不存在。修复后覆盖完整链路：无草稿占位 → Ctrl+S 落盘 → 重开 → 继续。
+test('草稿续开：Ctrl+S 存草稿 → 重开后「继续」恢复', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('#ep-draft-row')).toHaveText('无草稿');
+
   await page.locator('textarea').fill(sample);
   await page.getByRole('button', { name: '导入 HTML' }).click();
   await page.frameLocator('#ep-canvas-frame').locator('#p1').evaluate((el) => { el.textContent = 'changed'; });
   await page.keyboard.press('Control+s');
-  await page.waitForTimeout(200);
+  await expect(page.locator('#ep-draft-row')).toContainText('最近草稿：');
+
   await page.reload();
   await page.getByRole('button', { name: '继续' }).click();
   expect(await page.frameLocator('#ep-canvas-frame').locator('#p1').textContent()).toBe('changed');
