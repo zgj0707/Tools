@@ -1,0 +1,16 @@
+# 统一行尾：仓库与工作区一律 LF。
+# 起因：Windows 侧编辑器/脚本写入 LF、历史文件为 CRLF，导致 git diff 出现「整文件重写」的失真。
+# 约定：文本文件一律 LF；二进制文件显式声明，避免被当文本处理。
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
