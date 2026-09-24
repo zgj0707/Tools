@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>01 脚本轮播</title></head>
+<body>
+  <!-- 注释：轮播容器 -->
+  <div class="carousel" id="main-carousel">
+    <div class="slide active" onclick="goSlide(0)"><h2>第一张</h2><p>说明文字一</p></div>
+    <div class="slide" onclick="goSlide(1)"><h2>第二张</h2><p>说明文字二</p></div>
+    <div class="slide" onclick="goSlide(2)"><h2>第三张</h2><p>说明文字三</p></div>
+  </div>
+  <button class="btn" type="button" onmouseover="this.style.opacity=0.8">了解更多</button>
+  <script>
+    function goSlide(i){ console.log('slide', i); }
+  </script>
+</body>
+</html>

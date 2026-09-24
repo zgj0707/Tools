@@ -1,0 +1,222 @@
+// 真实编辑器实机截图探针 —— C 版落地验收用（视觉层 + 布局层）。
+//
+// 自起 Vite dev server（独立端口 4199，避免与 e2e 的 4173 冲突）→ 导入示例 HTML
+// → 选中一个元素（激活选中框 / 手柄 / 图层高亮 / 面包屑 / 样式面板）→ 截图。
+//
+// 出两张图，对应方案 C 的两层：
+//   editor-1440x900.png    左右面板展开（与改版前同口径，便于前后对比）
+//   editor-canvas-first.png 左右面板收起（方案 C 的默认观感：画布占满视野）
+//
+// 同时收集：console 错误、页面异常、横向溢出、非本地请求。任何一项非零都会打印出来。
+//
+// 用法：node qa/probes/editor-shot.mjs [--out test-results/editor]
+import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { chromium } from 'playwright';
+
+const PORT = 4199;
+const URL = `http://localhost:${PORT}`;
+const OUT_DIR = process.argv.includes('--out')
+  ? process.argv[process.argv.indexOf('--out') + 1]
+  : 'test-results/editor';
+
+/** 与 src/app/layout/UiLayout.ts 保持一致（本文件是 .mjs，无法 import TS，故字面量镜像）。 */
+const LAYOUT_KEY = 'easypage:layout';
+const LAYOUT_OPEN_ALL = JSON.stringify({ left: true, right: true });
+
+const SAMPLE = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>春季活动页</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:32px;color:#1f2937}
+  h1{font-size:34px;margin:0 0 12px}
+  p{font-size:15px;line-height:1.7;color:#5b6472;margin:0 0 16px}
+  .promo{background:#eef4ff;border:1px solid #d6e2fb;border-radius:10px;padding:16px;box-sizing:border-box}
+</style></head>
+<body>
+  <h1>春季焕新季</h1>
+  <p>全场低至五折，会员额外享 9 折，活动截止 4 月 30 日。</p>
+  <div class="promo" style="width:280px;height:150px">限时礼包 · 点此领取</div>
+</body>
+</html>`;
+
+function waitForServer(timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const tick = async () => {
+      try {
+        const res = await fetch(URL, { method: 'GET' });
+        if (res.ok || res.status === 200) return resolve();
+      } catch {
+        /* 还没起来 */
+      }
+      if (Date.now() > deadline) return reject(new Error(`dev server ${timeoutMs}ms 内未就绪`));
+      setTimeout(tick, 300);
+    };
+    tick();
+  });
+}
+
+/** 采集一组布局与视觉指标，供两张截图各出一份。 */
+const COLLECT = () => ({
+  scrollW: document.documentElement.scrollWidth,
+  clientW: document.documentElement.clientWidth,
+  scrollH: document.documentElement.scrollHeight,
+  layout: (() => {
+    const app = document.getElementById('ep-app');
+    return app ? { left: app.dataset.left, right: app.dataset.right } : null;
+  })(),
+  panelVisible: {
+    elements: (() => {
+      const el = document.querySelector('aside.ep-elements');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+    layers: (() => {
+      const el = document.querySelector('aside.ep-layers');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+    style: (() => {
+      const el = document.querySelector('aside.ep-panel');
+      return el ? getComputedStyle(el).display !== 'none' : null;
+    })(),
+  },
+  importOverlay: (() => {
+    const el = document.querySelector('.ep-import-overlay');
+    return el ? getComputedStyle(el).display !== 'none' : null;
+  })(),
+  canvasFrame: (() => {
+    const f = document.getElementById('ep-canvas-frame');
+    if (!f) return null;
+    const r = f.getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+    };
+  })(),
+  alignBar: (() => {
+    const b = document.querySelector('.ep-alignbar');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+    };
+  })(),
+  breadcrumbPill: (() => {
+    const b = document.getElementById('ep-breadcrumb');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+      visible: getComputedStyle(b).display !== 'none',
+      text: b.textContent,
+    };
+  })(),
+  handles: document.querySelectorAll('#ep-overlay-root [data-dir]').length,
+  visibleHandles: Array.from(document.querySelectorAll('#ep-overlay-root [data-dir]')).filter(
+    (h) => getComputedStyle(h).display !== 'none',
+  ).length,
+  selectedBox: (() => {
+    const b = document.getElementById('ep-selected-box');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      h: Math.round(r.height),
+      border: getComputedStyle(b).borderTopColor,
+    };
+  })(),
+  handleColor: (() => {
+    const h = document.querySelector('#ep-overlay-root [data-dir]');
+    return h ? getComputedStyle(h).backgroundColor : null;
+  })(),
+  toast: document.querySelector('.ep-toast')?.textContent ?? null,
+  layerSelectedBg: (() => {
+    const row = document.querySelector('.ep-layer-row--selected');
+    return row ? getComputedStyle(row).backgroundColor : null;
+  })(),
+  accent: getComputedStyle(document.documentElement).getPropertyValue('--ep-accent').trim(),
+  bg: getComputedStyle(document.body).backgroundColor,
+});
+
+const server = spawn('npm', ['run', 'dev', '--', '--port', String(PORT), '--strictPort'], {
+  shell: true,
+  stdio: 'ignore',
+  detached: false,
+});
+
+let browser;
+try {
+  await waitForServer(60_000);
+  mkdirSync(OUT_DIR, { recursive: true });
+
+  browser = await chromium.launch();
+  // 预置「面板展开」：与 tests/e2e、qa:metrics 同一前置条件，保证前后可比
+  const ctx = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    storageState: {
+      cookies: [],
+      origins: [{ origin: URL, localStorage: [{ name: LAYOUT_KEY, value: LAYOUT_OPEN_ALL }] }],
+    },
+  });
+  const page = await ctx.newPage();
+
+  const consoleErrors = [];
+  const pageErrors = [];
+  const externalRequests = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors.push(m.text());
+  });
+  page.on('pageerror', (e) => pageErrors.push(String(e)));
+  page.on('request', (r) => {
+    const u = r.url();
+    if (!u.startsWith('http://localhost') && !u.startsWith('data:') && !u.startsWith('blob:')) {
+      externalRequests.push(u);
+    }
+  });
+
+  await page.goto(URL, { waitUntil: 'networkidle' });
+
+  // 导入示例 → 选中第一个元素，把「选中框 + 8 手柄 + 图层高亮 + 面包屑 + 样式面板」一次点亮
+  await page.locator('textarea').fill(SAMPLE);
+  await page.getByRole('button', { name: '导入 HTML' }).click();
+  await page.waitForTimeout(400);
+
+  const frame = page.frameLocator('#ep-canvas-frame');
+  // 选一个带显式 inline 尺寸的元素 —— 只有这样 isResizable 才为真、8 个手柄才显示
+  await frame.locator('.promo').click();
+  await page.waitForTimeout(400);
+
+  // 触发一次 toast（不改变文档），让底部胶囊可见
+  await page.getByRole('button', { name: '重置位移' }).click();
+  await page.waitForTimeout(300);
+
+  // ① 面板展开态（与改版前同口径）
+  await page.screenshot({ path: `${OUT_DIR}/editor-1440x900.png` });
+  const metricsOpenPanels = await page.evaluate(COLLECT);
+
+  // ② 面板收起态 —— 方案 C 的默认观感。用顶栏开关收起，顺带验证开关本身可用。
+  await page.locator('.ep-topbar__toggle[data-panel="left"]').click();
+  await page.locator('.ep-topbar__toggle[data-panel="right"]').click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT_DIR}/editor-canvas-first.png` });
+  const metricsCanvasFirst = await page.evaluate(COLLECT);
+
+  console.log(
+    JSON.stringify(
+      { metricsOpenPanels, metricsCanvasFirst, consoleErrors, pageErrors, externalRequests },
+      null,
+      2,
+    ),
+  );
+} finally {
+  if (browser) await browser.close();
+  server.kill('SIGTERM');
+}

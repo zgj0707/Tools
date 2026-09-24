@@ -1,0 +1,1517 @@
+{
+  "generatedAt": "2026-09-23T02:22:12.519Z",
+  "durationMs": 23347,
+  "mode": "playwright-ui-ops",
+  "definitions": {
+    "note": "本报告由 Playwright 驱动真实 UI 的固定操作脚本取数；static 字段为原有 happy-dom 静态能力，不参与门禁判定。",
+    "contractSource": "docs/plan/01-技术基线与接口契约.md §8.2 / §8.3",
+    "contractText": {
+      "source": "docs/plan/01-技术基线与接口契约.md §8.2 / §8.3",
+      "fixedOpScript": "对每个样本执行固定操作脚本：导入 → 改第一个 h1 文本 → 改某可定位元素背景色 → 位移 (10,8) → 撤销 → 重做 → 切预览 → 导出。",
+      "hitRate": "命中率 hitRate = 能成功完成上述全部操作且导出包含预期改动的样本数 / 总样本数。",
+      "losslessRate": "无损率 losslessRate：对\"导入后不做任何编辑直接导出\"的产物，用 parse5 规范化后与原始规范化结果对比，未改动节点/属性/文本的一致比例（忽略空白差异）。",
+      "residueCount": "残留数 residueCount：导出 HTML 中匹配编辑器注入物（data-ep-、class=\"ep-、ep-overlay、contenteditable、编辑器注入的 <style id=\"ep-\"/脚本）的命中数；必须为 0，否则导出阻断。",
+      "upgradeNote": "T003 落地现状：hitRate 与 previewConsistency 需 T101 有真实编辑能力后，由 Playwright 跑\"固定操作脚本\"补全。residue 当前用六条正则检测，T101 接编辑器后升级为 §8.3 的 DOM 级纯函数清理。",
+      "stripList": "§8.3 移除：① contenteditable 与 data-ep-editing；② 任何 data-ep-*；③ 覆盖层 #ep-overlay-root 及外壳节点；④ 编辑器注入的 <style id=\"ep-*\"> / <script id=\"ep-*\">；⑤ 仅编辑期使用的临时 class。"
+    },
+    "fixedOperationScript": [
+      "粘贴导入样本（textarea + 「导入 HTML」）",
+      "双击文本目标改字并 Enter 提交（改文本）",
+      "样式面板背景色控件提交 #123456（改背景色）",
+      "合成指针拖拽位移 (10,8)（移动）",
+      "样式面板写显式 120px/80px → 拖 se 手柄 (+40,+undefined)（缩放）",
+      "焦点移出画布后 Ctrl+Z（撤销）",
+      "Ctrl+Shift+Z（重做）",
+      "「预览」开 → 校验标记文本 → 再点「预览」关（切预览）",
+      "「导出 HTML」并捕获导出文件（导出）"
+    ],
+    "hitRate": "能成功完成上述全部固定操作、且导出包含预期改动（标记文本 / 位移 / 缩放尺寸）的样本数 ÷ 总样本数。契约原文见 contractText.hitRate。",
+    "losslessRate": "对\"导入后不做任何编辑直接导出\"的产物与原始样本做规范化 token 比对（忽略空白差异、属性顺序），取一致率；跨样本汇总为 Σmatched/Σtotal。契约原文见 contractText.losslessRate。",
+    "residueCount": "在真实浏览器中 DOMParser 解析导出 HTML，逐个元素判定：任何 data-ep-* 属性、ep-/ep__ 前缀类名、#ep-overlay-root、contenteditable、<style id=\"ep-*\">/<script id=\"ep-*\">。命中总数必须为 0。契约原文见 contractText.residueCount / contractText.stripList。",
+    "editedRoundTripFidelity": "补充口径（非契约原有项）：导出前的编辑态 DOM ↔ 导出产物 的 token 一致率，即「导入→编辑操作→导出」这条真实链路上导出回写的保真度。",
+    "staticMetrics": "static 字段为 T004 原有静态能力（happy-dom 规范化 token diff + 六条正则），仅供对照，不参与门禁判定。"
+  },
+  "totals": {
+    "hitRate": 1,
+    "losslessRate": 0.7165,
+    "residueCount": 0,
+    "editedRoundTripFidelity": 1,
+    "samples": 12,
+    "hitSamples": 12
+  },
+  "static": {
+    "participatesInGate": false,
+    "note": "T004 原有静态能力（happy-dom 规范化 token diff + 六条正则），不参与门禁判定",
+    "totals": {
+      "losslessRate": 0.7165,
+      "residueCount": 0,
+      "diffUnits": 388
+    },
+    "perFixture": [
+      {
+        "id": "01-script-carousel",
+        "losslessRate": 0.8571,
+        "diffUnits": 28,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "02-shadowdom",
+        "losslessRate": 1,
+        "diffUnits": 17,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "03-svg-table",
+        "losslessRate": 1,
+        "diffUnits": 32,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "04-inline-image",
+        "losslessRate": 1,
+        "diffUnits": 21,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "05-ai-landing",
+        "losslessRate": 1,
+        "diffUnits": 35,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "06-malformed",
+        "losslessRate": 0.4063,
+        "diffUnits": 32,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "07-large",
+        "losslessRate": 1,
+        "diffUnits": 11,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "08-inline-events",
+        "losslessRate": 0.75,
+        "diffUnits": 16,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "09-word-fragment",
+        "losslessRate": 1,
+        "diffUnits": 22,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "10-flex-grid",
+        "losslessRate": 1,
+        "diffUnits": 27,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "demo-page",
+        "losslessRate": 0.25,
+        "diffUnits": 84,
+        "residue": [],
+        "dataAvailable": true
+      },
+      {
+        "id": "pick-page",
+        "losslessRate": 0.6825,
+        "diffUnits": 63,
+        "residue": [],
+        "dataAvailable": true
+      }
+    ]
+  },
+  "residueDetectorSelfTest": {
+    "ok": true,
+    "expected": 5,
+    "actual": 5,
+    "kinds": [
+      "class-ep-*",
+      "contenteditable",
+      "data-ep-*",
+      "ep-overlay-root",
+      "injected-style-script"
+    ]
+  },
+  "perFixture": [
+    {
+      "id": "01-script-carousel",
+      "category": "脚本轮播",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-01-script-carousel"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=615"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 615,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 0.8571,
+      "roundTrip": {
+        "losslessRate": 0.8571,
+        "matched": 24,
+        "total": 28
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 27,
+        "total": 27,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 256
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h2>；方块目标=<div>"
+    },
+    {
+      "id": "02-shadowdom",
+      "category": "ShadowDOM",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-02-shadowdom"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=641"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 641,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 17,
+        "total": 17
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 16,
+        "total": 16,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 42
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<header>"
+    },
+    {
+      "id": "03-svg-table",
+      "category": "SVG 表格",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-03-svg-table"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=754"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 754,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 32,
+        "total": 32
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 31,
+        "total": 31,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 42
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<h1>"
+    },
+    {
+      "id": "04-inline-image",
+      "category": "内联图片",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-04-inline-image"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=524"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 524,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 21,
+        "total": 21
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 20,
+        "total": 20,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 221
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<article>"
+    },
+    {
+      "id": "05-ai-landing",
+      "category": "AI 生成页",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-05-ai-landing"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=630"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 630,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 35,
+        "total": 35
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 34,
+        "total": 34,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 21
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<nav>"
+    },
+    {
+      "id": "06-malformed",
+      "category": "残缺 HTML",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-06-malformed"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=258"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 258,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 0.4063,
+      "roundTrip": {
+        "losslessRate": 0.4063,
+        "matched": 13,
+        "total": 32
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 8,
+        "total": 8,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 42
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<h1>"
+    },
+    {
+      "id": "07-large",
+      "category": "大页精简版",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-07-large"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=355"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 355,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 11,
+        "total": 11
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 10,
+        "total": 10,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 42
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<h1>"
+    },
+    {
+      "id": "08-inline-events",
+      "category": "内联事件安全",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-08-inline-events"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=484"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 484,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 0.75,
+      "roundTrip": {
+        "losslessRate": 0.75,
+        "matched": 12,
+        "total": 16
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 15,
+        "total": 15,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 21
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<button>；方块目标=<div>"
+    },
+    {
+      "id": "09-word-fragment",
+      "category": "文本片段",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-09-word-fragment"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=717"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 717,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 22,
+        "total": 22
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 19,
+        "total": 19,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 95
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<p>；方块目标=<div>"
+    },
+    {
+      "id": "10-flex-grid",
+      "category": "Flex-Grid 布局",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-10-flex-grid"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 160px/110px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 160px/110px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=657"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 657,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 1,
+      "roundTrip": {
+        "losslessRate": 1,
+        "matched": 27,
+        "total": 27
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 26,
+        "total": 26,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 590,
+          "rectH": 139
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "resized": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 120,
+          "rectH": 80
+        },
+        "final": {
+          "width": "160px",
+          "height": "110px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 160,
+          "rectH": 110
+        }
+      },
+      "notes": "文本目标=<h2>；方块目标=<div>"
+    },
+    {
+      "id": "demo-page",
+      "category": "未分类",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-demo-page"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 288px/398px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 288px/398px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=2937"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 2937,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 0.25,
+      "roundTrip": {
+        "losslessRate": 0.25,
+        "matched": 21,
+        "total": 84
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 83,
+        "total": 83,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 606,
+          "rectH": 1073
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 184,
+          "rectH": 224
+        },
+        "resized": {
+          "width": "288px",
+          "height": "398px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 352,
+          "rectH": 542
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 184,
+          "rectH": 224
+        },
+        "final": {
+          "width": "288px",
+          "height": "398px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 352,
+          "rectH": 542
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<article>"
+    },
+    {
+      "id": "pick-page",
+      "category": "未分类",
+      "hit": true,
+      "allOpsOk": true,
+      "opResults": {
+        "editText": {
+          "ok": true,
+          "detail": "文本已改为 EPMETRICS-改字-pick-page"
+        },
+        "setBg": {
+          "ok": true,
+          "detail": "背景色=#123456"
+        },
+        "move": {
+          "ok": true,
+          "detail": "transform: \"translate(10px, 8px)\"（期望含位移方向 10,8）"
+        },
+        "resize": {
+          "ok": true,
+          "detail": "宽高 120px/80px → 256px/590px"
+        },
+        "undo": {
+          "ok": true,
+          "detail": "宽高回到 120px/80px"
+        },
+        "redo": {
+          "ok": true,
+          "detail": "宽高恢复为 256px/590px"
+        },
+        "preview": {
+          "ok": true,
+          "detail": "预览态含编辑后的标记文本"
+        },
+        "export": {
+          "ok": true,
+          "detail": "标记=true 位移=true 缩放=true 背景色=true 长度=1912"
+        }
+      },
+      "failReasons": [],
+      "exportDiff": {
+        "hasExport": true,
+        "exportedLength": 1912,
+        "expectedChanges": {
+          "hasMarker": true,
+          "hasTransform": true,
+          "hasResized": true,
+          "hasBg": true
+        },
+        "summary": "editText:ok setBg:ok move:ok resize:ok undo:ok redo:ok preview:ok export:ok"
+      },
+      "residue": {
+        "total": 0,
+        "hits": []
+      },
+      "losslessRate": 0.6825,
+      "roundTrip": {
+        "losslessRate": 0.6825,
+        "matched": 43,
+        "total": 63
+      },
+      "editedRoundTripFidelity": 1,
+      "editedRoundTripDetail": {
+        "matched": 62,
+        "total": 62,
+        "firstDiff": null
+      },
+      "boxes": {
+        "moved": {
+          "width": "",
+          "height": "",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 606,
+          "rectH": 2514
+        },
+        "preset": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 168,
+          "rectH": 320
+        },
+        "resized": {
+          "width": "256px",
+          "height": "590px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 304,
+          "rectH": 830
+        },
+        "undo": {
+          "width": "120px",
+          "height": "80px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 168,
+          "rectH": 320
+        },
+        "final": {
+          "width": "256px",
+          "height": "590px",
+          "transform": "translate(10px, 8px)",
+          "backgroundColor": "rgb(18, 52, 86)",
+          "rectW": 304,
+          "rectH": 830
+        }
+      },
+      "notes": "文本目标=<h1>；方块目标=<main>"
+    }
+  ],
+  "gate": {
+    "result": "fail",
+    "baselineFile": "qa/report/metrics-baseline.json",
+    "baselineGeneratedAt": "2026-09-22T04:58:49.816Z",
+    "checks": [
+      {
+        "name": "residueDetectorSelfTest（判别力自检：五类注入物全部命中）",
+        "ok": true,
+        "actual": 5,
+        "expected": 5
+      },
+      {
+        "name": "residueCount === 0",
+        "ok": true,
+        "actual": 0,
+        "expected": 0
+      },
+      {
+        "name": "hitRate >= baseline",
+        "ok": true,
+        "actual": 1,
+        "expected": ">= 1"
+      },
+      {
+        "name": "losslessRate >= baseline",
+        "ok": false,
+        "actual": 0.7165,
+        "expected": ">= 0.888"
+      }
+    ],
+    "failed": [
+      "losslessRate >= baseline"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+/* 多文件夹具的外部样式表。存在即有意义：它让「样式没跟过去 ⇒ 整页塌掉」这件事可被复现。 */
+:root {
+  --ink: #1f2328;
+  --line: #d8dee6;
+}
+
+body {
+  margin: 0;
+  font: 16px/1.7 system-ui, sans-serif;
+  color: var(--ink);
+}
+
+.rail {
+  padding: 28px 32px;
+  border-bottom: 1px solid var(--line);
+  background: #f6f8fa;
+}
+
+.cards-are-laid-out-by-this-stylesheet {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  margin: 24px 32px;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eef1f4;
+}

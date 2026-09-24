@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>易页 EasyPage · UI 重构原型（批次 1 · P0 止血）</title>
+<!--
+================================================================================
+ 易页 EasyPage · UI/UX 重构原型 · 方案 D「机制补齐」
+================================================================================
+ 设计意图（≤80 字）：
+   补齐 Figma / Canva 的三个基础机制——缩放、上下文工具条、属性分组；
+   画布高度自适应、预览改全屏覆盖层、工具全部图标化。视觉沿用 C 版。
+
+ 本原型覆盖方案文档《06-UIUX重构方案》的批次 1（R1–R5）：
+   R1 预览 → 全屏覆盖层 + 设备宽度切换（Esc 关闭）
+   R2 缩放系统 → 右下角控件 + Ctrl ±/0/1 + 面板开合自动适应宽度
+   R3 画布高度自适应 → 填满可用高度，消除底部空白
+   R4 浮动上下文工具条 → 贴选中元素上方（贴边自动翻到下方）
+   R5 顶栏分组 + 全站图标化 → 8 个图标按钮 + 8 个图标对齐按钮
+
+ 承诺：零外链（file:// 直接打开）、单文件、系统字体、图标全部内联 SVG。
+ 演示范围：选中 / 多选 / 拖拽 / 8 手柄缩放 / 方向键微移 / 缩放与适应宽度 /
+           预览覆盖层与设备切换 / 面板开合 / 属性分组折叠 / 图层树点选 /
+           样式字段真实作用到选中元素 / toast。
+ 刻意不做（属批次 2–3）：图层拖拽重排、双击重命名、就地改字的浮动文字条、
+           画布尺寸徽标与间距标注、顶栏文档名持久化。
+
+ 额外一并做进原型的（严格说属批次 2，但它决定右栏骨架，一起看更省一轮）：
+   · 属性面板分组折叠（R7）：文字 / 布局 / 外观 / 尺寸与位置，默认只展开「文字」
+   · 盒模型图形控件（R8）：外距 / 内距两层同心矩形 + 四向输入
+   —— 若你希望严格只评审批次 1，这两块可以单独回退，不影响其余五个机制。
+
+ 【设计 token】与 src/app/style/tokens.css 一字不差（沿用 C 版，不改气质）
+   颜色  --ep-bg #f6f6f4 · --ep-surface #ffffff · --ep-surface-2 #fafaf8
+        --ep-surface-3 #f1f1ee · --ep-ink #1f1f1e · --ep-ink-2 #6b6b68
+        --ep-ink-3 #a3a39e · --ep-line #ecece8 · --ep-line-2 #deded8
+        --ep-accent #2f6bff · --ep-accent-soft rgba(66,133,244,.12)
+        --ep-focus-bg #edf3ff · --ep-selected #2f6bff · --ep-handle #2f6bff
+        --ep-danger #d93a2b · --ep-toast-bg #26262a
+   间距  4 / 8 / 12 / 16 / 24 / 32
+   圆角  4 / 6 / 10 / 14 / 999 / 2(纸)
+   字号  11 / 12 / 13 / 14 / 20
+   阴影  sh-1 0 1px 2px rgba(20,20,18,.06)
+        sh-2 0 6px 20px rgba(20,20,18,.1), 0 1px 2px rgba(20,20,18,.05)
+        sh-3 0 12px 36px rgba(20,20,18,.14), 0 2px 6px rgba(20,20,18,.06)
+   尺寸  topbar 48 · drawer 244 · control 28 · handle 9
+
+ 【与另两版原型的差异】本版不是并列的第三套配色，而是**在 C 版之上补机制**：
+   与 A（Dark Pro）差异——外壳仍是浅色，不走深色场；与 B（Light System）差异——
+   不引卡片化分区与蓝紫双强调色，坚持单一强调色 + 分隔线。
+
+ 【本原型的实现取舍】被编辑页面用真实 DOM（非 iframe）承载，以便原型内直接
+   演示选中/拖拽；真实产品仍是 iframe + 覆盖层。覆盖层坐标算法与产品一致：
+   尺寸 = 元素屏幕矩形 − 舞台矩形，故覆盖层不随缩放变粗变糊。
+================================================================================
+-->
+<style>
+:root{
+  --ep-bg:#f6f6f4; --ep-surface:#ffffff; --ep-surface-2:#fafaf8; --ep-surface-3:#f1f1ee;
+  --ep-ink:#1f1f1e; --ep-ink-2:#6b6b68; --ep-ink-3:#a3a39e;
+  --ep-line:#ecece8; --ep-line-2:#deded8;
+  --ep-accent:#2f6bff; --ep-accent-soft:rgba(66,133,244,.12); --ep-accent-line:rgba(66,133,244,.9);
+  --ep-focus-bg:#edf3ff; --ep-selected:#2f6bff; --ep-handle:#2f6bff; --ep-handle-ring:#fff;
+  --ep-danger:#d93a2b; --ep-toast-bg:#26262a; --ep-toast-ink:#f7f7f5;
+  --ep-sp-1:4px; --ep-sp-2:8px; --ep-sp-3:12px; --ep-sp-4:16px; --ep-sp-5:24px; --ep-sp-6:32px;
+  --ep-r-xs:4px; --ep-r-sm:6px; --ep-r-md:10px; --ep-r-lg:14px; --ep-r-pill:999px; --ep-r-paper:2px;
+  --ep-fs-11:11px; --ep-fs-12:12px; --ep-fs-13:13px; --ep-fs-14:14px; --ep-fs-20:20px;
+  --ep-sh-1:0 1px 2px rgba(20,20,18,.06);
+  --ep-sh-2:0 6px 20px rgba(20,20,18,.1), 0 1px 2px rgba(20,20,18,.05);
+  --ep-sh-3:0 12px 36px rgba(20,20,18,.14), 0 2px 6px rgba(20,20,18,.06);
+  --ep-topbar-h:48px; --ep-control-h:28px; --ep-handle-size:9px;
+  --ep-font:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--ep-font);font-size:var(--ep-fs-13);line-height:1.5;color:var(--ep-ink);
+  background:var(--ep-bg);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ============ 外壳 ============ */
+#ep-app{display:flex;flex-direction:column;height:100%}
+.ep-topbar{flex:0 0 auto;display:flex;align-items:center;gap:var(--ep-sp-2);
+  height:var(--ep-topbar-h);padding:0 var(--ep-sp-3);background:var(--ep-surface);
+  border-bottom:1px solid var(--ep-line);position:relative;z-index:60}
+.ep-topbar__brand{display:flex;align-items:center;flex:0 0 auto;padding-right:var(--ep-sp-3);
+  border-right:1px solid var(--ep-line)}
+.ep-topbar__name{margin:0;font-size:var(--ep-fs-13);font-weight:600;letter-spacing:.02em;white-space:nowrap}
+.ep-toolbar{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:2px;overflow:hidden}
+.ep-toolbar__sep{flex:0 0 auto;width:1px;height:18px;margin:0 var(--ep-sp-2);background:var(--ep-line-2)}
+.ep-topbar__right{flex:0 0 auto;display:flex;align-items:center;gap:var(--ep-sp-2)}
+
+/* ---- 图标按钮 ---- */
+.ep-btn{flex:0 0 auto;height:var(--ep-control-h);padding:0 var(--ep-sp-3);border:1px solid transparent;
+  border-radius:var(--ep-r-sm);background:transparent;color:var(--ep-ink-2);font-size:var(--ep-fs-12);
+  white-space:nowrap;display:inline-flex;align-items:center;gap:var(--ep-sp-2);
+  transition:background .12s,color .12s,border-color .12s}
+.ep-btn:hover:not([disabled]){background:var(--ep-surface-3);color:var(--ep-ink)}
+.ep-btn:active:not([disabled]){background:var(--ep-line)}
+.ep-btn:focus-visible{outline:2px solid var(--ep-accent);outline-offset:1px}
+.ep-btn[disabled]{color:var(--ep-ink-3);cursor:not-allowed}
+.ep-btn svg{flex:0 0 auto}
+.ep-btn--icon{width:var(--ep-control-h);padding:0;justify-content:center}
+.ep-btn--active{background:var(--ep-focus-bg);color:var(--ep-accent)}
+.ep-btn--primary{border-color:var(--ep-accent);background:var(--ep-accent);color:#fff}
+.ep-btn--primary:hover:not([disabled]){background:#2358d8;color:#fff}
+.ep-btn--danger:hover:not([disabled]){color:var(--ep-danger);background:var(--ep-surface-3)}
+.ep-btn--block{display:flex;width:100%;text-align:left;justify-content:flex-start}
+
+/* ---- 文档名胶囊 + 未保存标记 ---- */
+.ep-doc{display:flex;align-items:center;gap:var(--ep-sp-2);height:var(--ep-control-h);
+  padding:0 var(--ep-sp-3);border:1px solid var(--ep-line);border-radius:var(--ep-r-pill);
+  background:var(--ep-surface-2);font-size:var(--ep-fs-12);color:var(--ep-ink-2);max-width:240px}
+.ep-doc__name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ep-ink)}
+.ep-doc__dot{flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:var(--ep-accent)}
+.ep-doc[data-dirty="false"] .ep-doc__dot{background:var(--ep-line-2)}
+
+/* ============ 主区 ============ */
+.ep-main{flex:1 1 auto;min-height:0;display:flex;align-items:stretch;padding:var(--ep-sp-3) 0 0}
+
+/* ---- 左栏（Tab 收纳） ---- */
+.ep-left{flex:0 0 auto;width:244px;display:flex;flex-direction:column;min-height:0;
+  border-right:1px solid var(--ep-line);background:var(--ep-surface-2)}
+#ep-app[data-left="closed"] .ep-left{display:none}
+.ep-tabs{flex:0 0 auto;display:flex;gap:2px;padding:var(--ep-sp-2) var(--ep-sp-2) 0}
+.ep-tab{flex:1 1 0;height:26px;border-radius:var(--ep-r-sm);font-size:var(--ep-fs-12);
+  color:var(--ep-ink-2);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ep-tab:hover{background:var(--ep-surface-3);color:var(--ep-ink)}
+.ep-tab[aria-selected="true"]{background:var(--ep-surface);color:var(--ep-accent);
+  box-shadow:var(--ep-sh-1);font-weight:500}
+.ep-tabpanel{flex:1 1 auto;min-height:0;overflow-y:auto;padding:var(--ep-sp-3)}
+.ep-tabpanel[hidden]{display:none}
+
+.ep-insert-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--ep-sp-2)}
+.ep-insert{height:58px;border:1px solid var(--ep-line);border-radius:var(--ep-r-md);
+  background:var(--ep-surface);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;font-size:var(--ep-fs-11);color:var(--ep-ink-2);
+  transition:border-color .12s,color .12s,background .12s}
+.ep-insert:hover{border-color:var(--ep-accent);color:var(--ep-accent);background:var(--ep-focus-bg)}
+.ep-insert svg{color:var(--ep-ink-3)}
+.ep-insert:hover svg{color:var(--ep-accent)}
+.ep-group-title{margin:var(--ep-sp-4) 0 var(--ep-sp-2);font-size:var(--ep-fs-11);font-weight:600;
+  color:var(--ep-ink-3);letter-spacing:.08em}
+.ep-group-title:first-child{margin-top:0}
+
+/* ---- 图层树 ---- */
+.ep-layer-row{display:flex;align-items:center;gap:var(--ep-sp-1);height:24px;padding:0 var(--ep-sp-1);
+  border-radius:var(--ep-r-xs);font-size:var(--ep-fs-12);cursor:pointer;white-space:nowrap}
+.ep-layer-row:hover{background:var(--ep-surface-3)}
+.ep-layer-row--selected,.ep-layer-row--selected:hover{background:var(--ep-focus-bg);color:var(--ep-accent)}
+.ep-layer-row__chev{flex:0 0 14px;display:flex;align-items:center;justify-content:center;color:var(--ep-ink-3)}
+.ep-layer-row__name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ep-layer-row__acts{flex:0 0 auto;display:flex;gap:2px;opacity:0;transition:opacity .1s}
+.ep-layer-row:hover .ep-layer-row__acts,.ep-layer-row--selected .ep-layer-row__acts{opacity:1}
+.ep-layer-row__acts button{width:18px;height:18px;border-radius:var(--ep-r-xs);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--ep-ink-3)}
+.ep-layer-row__acts button:hover{background:var(--ep-line);color:var(--ep-ink)}
+
+/* ---- 画布列 ---- */
+.ep-canvas-col{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column}
+.ep-alignbar{flex:0 0 auto;align-self:center;display:flex;flex-wrap:wrap;align-items:center;
+  gap:2px;margin-bottom:var(--ep-sp-2);padding:var(--ep-sp-1) var(--ep-sp-2);
+  border:1px solid var(--ep-line);border-radius:var(--ep-r-pill);background:var(--ep-surface);
+  box-shadow:var(--ep-sh-1);max-width:calc(100% - var(--ep-sp-5))}
+.ep-alignbar__label{flex:0 0 auto;margin:0 var(--ep-sp-1) 0 var(--ep-sp-2);
+  font-size:var(--ep-fs-11);color:var(--ep-ink-3);letter-spacing:.04em}
+
+/* R3：画布高度填满可用空间（原实现固定 600px，底部空 194px） */
+.ep-viewport{flex:1 1 auto;min-height:0;position:relative;overflow:auto;
+  background:#e9e9e5;border-top:1px solid var(--ep-line);border-bottom:1px solid var(--ep-line);
+  display:flex;justify-content:center;padding:var(--ep-sp-5) var(--ep-sp-4)}
+.ep-stage{position:relative;flex:0 0 auto;margin:auto}
+.ep-page-wrap{transform-origin:0 0;width:1200px;background:var(--ep-surface);
+  box-shadow:var(--ep-sh-2);border-radius:var(--ep-r-paper);overflow:hidden}
+.ep-overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
+.ep-overlay__box{position:absolute;pointer-events:none}
+
+/* ---- 覆盖层视觉（分布局：JS 管坐标，CSS 管长相） ---- */
+#ep-hover-box{border:2px solid var(--ep-accent-line);background:var(--ep-accent-soft)}
+#ep-hover-box[data-fill="false"]{background:none}
+#ep-selected-box{border:2px solid var(--ep-selected)}
+#ep-selected-many{border:2px solid var(--ep-selected);opacity:.7}
+#ep-handle-layer [data-dir]{position:absolute;width:var(--ep-handle-size);height:var(--ep-handle-size);
+  background:var(--ep-handle);border:1px solid var(--ep-handle-ring);pointer-events:auto}
+#ep-handle-layer [data-dir][hidden]{display:none}
+
+/* ---- R4：浮动上下文工具条 ---- */
+.ep-ctxbar{position:absolute;display:none;align-items:center;gap:2px;padding:var(--ep-sp-1);
+  border:1px solid var(--ep-line);border-radius:var(--ep-r-pill);background:var(--ep-surface);
+  box-shadow:var(--ep-sh-3);pointer-events:auto;z-index:8;white-space:nowrap}
+.ep-ctxbar[data-open="true"]{display:flex}
+.ep-ctxbar__sep{flex:0 0 auto;width:1px;height:16px;margin:0 var(--ep-sp-1);background:var(--ep-line-2)}
+.ep-ctxbar__num{flex:0 0 34px;height:22px;padding:0 4px;border:1px solid var(--ep-line-2);
+  border-radius:var(--ep-r-xs);font-size:var(--ep-fs-11);text-align:center;background:var(--ep-surface)}
+.ep-ctxbar .ep-btn{height:22px;padding:0 6px}
+.ep-ctxbar .ep-btn--icon{width:22px}
+.ep-ctxbar__swatch{flex:0 0 auto;width:22px;height:22px;border:1px solid var(--ep-line-2);
+  border-radius:var(--ep-r-xs);padding:2px;cursor:pointer;background:var(--ep-surface)}
+
+/* ---- 状态栏 ---- */
+.ep-statusbar{flex:0 0 auto;display:flex;align-items:center;gap:var(--ep-sp-3);
+  height:38px;padding:0 var(--ep-sp-4)}
+.ep-crumbs{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--ep-sp-1);
+  overflow:hidden;white-space:nowrap}
+.ep-crumb{flex:0 0 auto;padding:2px var(--ep-sp-2);border-radius:var(--ep-r-xs);
+  font-size:var(--ep-fs-12);color:var(--ep-ink-2);cursor:pointer}
+.ep-crumb:hover{background:var(--ep-surface-3);color:var(--ep-ink)}
+.ep-crumb:last-child{color:var(--ep-ink);background:var(--ep-focus-bg)}
+.ep-crumb__sep{flex:0 0 auto;color:var(--ep-ink-3);font-size:var(--ep-fs-11)}
+.ep-meta{flex:0 0 auto;font-size:var(--ep-fs-11);color:var(--ep-ink-3)}
+
+/* ---- R2：缩放控件 ---- */
+.ep-zoom{flex:0 0 auto;display:flex;align-items:center;gap:2px;height:26px;padding:2px;
+  border:1px solid var(--ep-line);border-radius:var(--ep-r-pill);background:var(--ep-surface);
+  box-shadow:var(--ep-sh-1)}
+.ep-zoom button{width:22px;height:20px;border-radius:var(--ep-r-xs);display:inline-flex;
+  align-items:center;justify-content:center;color:var(--ep-ink-2)}
+.ep-zoom button:hover{background:var(--ep-surface-3);color:var(--ep-ink)}
+.ep-zoom__val{flex:0 0 46px;font-size:var(--ep-fs-11);color:var(--ep-ink);text-align:center;
+  background:none;border:0;cursor:pointer;border-radius:var(--ep-r-xs);height:20px}
+.ep-zoom__val:hover{background:var(--ep-surface-3)}
+
+/* ---- 右栏属性面板（R7 分组折叠属批次 2，本原型先示意结构） ---- */
+.ep-right{flex:0 0 auto;width:260px;overflow-y:auto;border-left:1px solid var(--ep-line);
+  background:var(--ep-surface-2)}
+#ep-app[data-right="closed"] .ep-right{display:none}
+.ep-section{border-bottom:1px solid var(--ep-line)}
+.ep-section__head{display:flex;align-items:center;gap:var(--ep-sp-2);width:100%;
+  height:32px;padding:0 var(--ep-sp-3);font-size:var(--ep-fs-12);font-weight:500;color:var(--ep-ink)}
+.ep-section__head:hover{background:var(--ep-surface-3)}
+.ep-section__head svg{color:var(--ep-ink-3);transition:transform .15s}
+.ep-section[data-open="false"] .ep-section__head svg{transform:rotate(-90deg)}
+.ep-section__body{padding:0 var(--ep-sp-3) var(--ep-sp-3)}
+.ep-section[data-open="false"] .ep-section__body{display:none}
+.ep-notice{margin:0 0 var(--ep-sp-2);padding:var(--ep-sp-2);border-radius:var(--ep-r-xs);
+  background:var(--ep-surface-3);font-size:var(--ep-fs-11);color:var(--ep-ink-2)}
+
+.ep-row{display:flex;align-items:center;gap:var(--ep-sp-2);margin-bottom:var(--ep-sp-2)}
+.ep-row > label{flex:0 0 56px;font-size:var(--ep-fs-12);color:var(--ep-ink-2)}
+.ep-row > input,.ep-row > select{flex:1 1 auto;min-width:0;height:var(--ep-control-h);
+  padding:0 var(--ep-sp-2);border:1px solid var(--ep-line-2);border-radius:var(--ep-r-sm);
+  background:var(--ep-surface);font-size:var(--ep-fs-12)}
+.ep-row > input:focus,.ep-row > select:focus{outline:none;border-color:var(--ep-accent);
+  box-shadow:0 0 0 3px var(--ep-accent-soft)}
+.ep-row > input[type="color"]{padding:2px;cursor:pointer}
+.ep-row--split{display:grid;grid-template-columns:1fr 1fr;gap:var(--ep-sp-2);margin-bottom:var(--ep-sp-2)}
+.ep-seg{display:flex;gap:2px}
+.ep-seg button{flex:1 1 0;height:var(--ep-control-h);border:1px solid var(--ep-line-2);
+  border-radius:var(--ep-r-sm);background:var(--ep-surface);color:var(--ep-ink-2);
+  display:inline-flex;align-items:center;justify-content:center}
+.ep-seg button:hover{background:var(--ep-surface-3)}
+.ep-seg button[aria-pressed="true"]{border-color:var(--ep-accent);color:var(--ep-accent);background:var(--ep-focus-bg)}
+
+/* ---- 盒模型图形控件 ---- */
+.ep-boxmodel{margin-top:var(--ep-sp-1)}
+.ep-bm{position:relative;border-radius:var(--ep-r-sm);background:var(--ep-surface-3);
+  border:1px dashed var(--ep-line-2);padding:30px}
+.ep-bm--pad{background:var(--ep-surface-2);border-style:none;border:1px solid var(--ep-line-2)}
+.ep-bm--content{background:var(--ep-surface);border-style:solid;border-color:var(--ep-line-2);
+  padding:14px 8px;text-align:center;font-size:var(--ep-fs-11);color:var(--ep-ink-2)}
+.ep-bm__tag{position:absolute;top:3px;left:8px;font-size:10px;color:var(--ep-ink-3)}
+.ep-bm input{position:absolute;width:42px;height:20px;padding:0 3px;font-size:var(--ep-fs-11);
+  text-align:center;border:1px solid var(--ep-line-2);border-radius:var(--ep-r-xs);
+  background:var(--ep-surface)}
+.ep-bm input:focus{outline:none;border-color:var(--ep-accent)}
+.ep-bm input[data-pos="top"]{top:16px;left:50%;transform:translateX(-50%)}
+.ep-bm input[data-pos="bottom"]{bottom:4px;left:50%;transform:translateX(-50%)}
+.ep-bm input[data-pos="left"]{left:2px;top:50%;transform:translateY(-50%)}
+.ep-bm input[data-pos="right"]{right:2px;top:50%;transform:translateY(-50%)}
+.ep-bm--pad input[data-pos="top"]{top:14px}
+.ep-bm--pad input[data-pos="bottom"]{bottom:3px}
+
+/* ============ R1：预览全屏覆盖层 ============ */
+.ep-preview{position:fixed;inset:0;z-index:200;display:none;flex-direction:column;background:#2b2b2e}
+.ep-preview[data-open="true"]{display:flex}
+.ep-preview__bar{flex:0 0 auto;display:flex;align-items:center;gap:var(--ep-sp-3);
+  height:44px;padding:0 var(--ep-sp-4);background:#232326;color:#f0f0ee;font-size:var(--ep-fs-12)}
+.ep-preview__title{flex:0 0 auto;font-weight:500}
+.ep-preview__devices{flex:0 0 auto;display:flex;gap:2px}
+.ep-preview__devices button{height:26px;padding:0 var(--ep-sp-3);border-radius:var(--ep-r-sm);
+  color:#c9c9c6;font-size:var(--ep-fs-12)}
+.ep-preview__devices button:hover{background:#33333a;color:#fff}
+.ep-preview__devices button[aria-pressed="true"]{background:var(--ep-accent);color:#fff}
+.ep-preview__hint{margin-left:auto;color:#8e8e8b}
+.ep-preview__close{flex:0 0 auto;width:28px;height:28px;border-radius:var(--ep-r-sm);
+  display:inline-flex;align-items:center;justify-content:center;color:#d8d8d5}
+.ep-preview__close:hover{background:#33333a;color:#fff}
+.ep-preview__stage{flex:1 1 auto;min-height:0;overflow:auto;display:flex;
+  align-items:flex-start;justify-content:center;padding:var(--ep-sp-5)}
+.ep-preview__frame{flex:0 0 auto;background:#fff;box-shadow:var(--ep-sh-3);transform-origin:top center}
+
+/* ============ 被编辑页面样本样式 ============ */
+.pg{font-size:15px;color:#1f2937}
+.pg-nav{display:flex;align-items:center;gap:24px;padding:18px 40px;border-bottom:1px solid #eef0f3}
+.pg-logo{font-weight:600;font-size:17px;letter-spacing:-.01em}
+.pg-link{color:#5b6472;font-size:14px;cursor:pointer}
+.pg-cta-sm{margin-left:auto;padding:8px 16px;border-radius:8px;background:#eef4ff;
+  color:#2358d8;font-size:14px;font-weight:500;cursor:pointer}
+.pg-hero{padding:56px 40px 40px;max-width:820px}
+.pg-h1{margin:0 0 16px;font-size:40px;line-height:1.2;letter-spacing:-.02em;font-weight:600}
+.pg-p{margin:0 0 28px;font-size:16px;line-height:1.75;color:#5b6472}
+.pg-actions{display:flex;align-items:center;gap:20px}
+.pg-cta{padding:12px 26px;border-radius:10px;background:#2f6bff;color:#fff;
+  font-size:15px;font-weight:500;cursor:pointer}
+.pg-ghost{color:#2358d8;font-size:15px;cursor:pointer}
+.pg-features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:8px 40px 40px}
+.pg-card{padding:22px;border:1px solid #e8ebf0;border-radius:12px;background:#fbfcfe}
+.pg-card h3{margin:0 0 8px;font-size:16px;font-weight:600}
+.pg-card p{margin:0;font-size:14px;line-height:1.65;color:#5b6472}
+.pg-footer{display:flex;justify-content:space-between;padding:22px 40px;
+  border-top:1px solid #eef0f3;font-size:13px;color:#8a929e}
+
+/* ============ toast ============ */
+.ep-toast{position:fixed;left:50%;bottom:var(--ep-sp-5);transform:translateX(-50%) translateY(6px);
+  opacity:0;visibility:hidden;transition:opacity .16s ease,transform .16s ease;z-index:9999;
+  max-width:60%;padding:var(--ep-sp-2) var(--ep-sp-4);border-radius:var(--ep-r-pill);
+  background:var(--ep-toast-bg);color:var(--ep-toast-ink);font-size:var(--ep-fs-12);
+  box-shadow:var(--ep-sh-2);pointer-events:none}
+.ep-toast[data-open="true"]{transform:translateX(-50%);opacity:1;visibility:visible}
+</style>
+</head>
+<body>
+<div id="ep-app" data-left="open" data-right="open">
+
+  <div class="ep-topbar">
+    <div class="ep-topbar__brand"><h1 class="ep-topbar__name">易页 EasyPage</h1></div>
+
+    <div class="ep-toolbar" id="ep-toolbar"></div>
+
+    <div class="ep-topbar__right">
+      <div class="ep-doc" id="ep-doc" data-dirty="true" title="当前文档">
+        <span class="ep-doc__name" id="ep-doc-name">春季活动页.html</span>
+        <span class="ep-doc__dot"></span>
+      </div>
+      <button class="ep-btn" id="ep-preview-btn"></button>
+      <button class="ep-btn" id="ep-export-btn"></button>
+      <button class="ep-btn ep-btn--icon" id="ep-copy-btn"></button>
+    </div>
+  </div>
+
+  <div class="ep-main">
+    <aside class="ep-left">
+      <div class="ep-tabs" role="tablist">
+        <button class="ep-tab" role="tab" aria-selected="true" data-tab="insert"><span>插入</span></button>
+        <button class="ep-tab" role="tab" aria-selected="false" data-tab="layers"><span>图层</span></button>
+      </div>
+      <div class="ep-tabpanel" data-panel="insert" id="ep-insert-panel"></div>
+      <div class="ep-tabpanel" data-panel="layers" id="ep-layers-panel" hidden></div>
+    </aside>
+
+    <div class="ep-canvas-col">
+      <div class="ep-alignbar" id="ep-alignbar"></div>
+
+      <div class="ep-viewport" id="ep-viewport">
+        <div class="ep-stage" id="ep-stage">
+          <div class="ep-page-wrap" id="ep-page-wrap">
+            <div class="pg" id="ep-page">
+              <nav class="pg-nav">
+                <span class="pg-logo">Nova</span>
+                <a class="pg-link">产品</a><a class="pg-link">定价</a><a class="pg-link">文档</a>
+                <button class="pg-cta-sm">免费试用</button>
+              </nav>
+              <header class="pg-hero">
+                <h1 class="pg-h1">让每个人都能改网页</h1>
+                <p class="pg-p">导入一份 HTML，直接在画布里改字、调样式、拖拽对齐，最后导出一份干净的代码。</p>
+                <div class="pg-actions">
+                  <button class="pg-cta">立即开始</button>
+                  <a class="pg-ghost">看演示 →</a>
+                </div>
+              </header>
+              <section class="pg-features">
+                <div class="pg-card"><h3>导入</h3><p>粘贴即编辑，无需搭建环境。</p></div>
+                <div class="pg-card"><h3>精修</h3><p>改字、调样式、拖拽缩放。</p></div>
+                <div class="pg-card"><h3>导出</h3><p>干净 HTML，不带编辑器痕迹。</p></div>
+              </section>
+              <footer class="pg-footer"><span>© 2026 易页 EasyPage</span><span>隐私 · 条款</span></footer>
+            </div>
+          </div>
+          <div class="ep-overlay" id="ep-overlay">
+            <div class="ep-overlay__box" id="ep-hover-box" hidden></div>
+            <div class="ep-overlay__box" id="ep-selected-box" hidden></div>
+            <div class="ep-overlay__box" id="ep-selected-many" hidden></div>
+            <div id="ep-handle-layer"></div>
+            <div class="ep-ctxbar" id="ep-ctxbar" data-open="false"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ep-statusbar">
+        <div class="ep-crumbs" id="ep-crumbs"></div>
+        <div class="ep-meta" id="ep-meta"></div>
+        <div class="ep-zoom">
+          <button id="ep-zoom-out" title="缩小（Ctrl -）"></button>
+          <button class="ep-zoom__val" id="ep-zoom-val" title="点击恢复 100%"></button>
+          <button id="ep-zoom-in" title="放大（Ctrl +）"></button>
+          <button id="ep-zoom-fit" title="适应宽度（Ctrl 1）"></button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="ep-right" id="ep-right"></aside>
+  </div>
+</div>
+
+<div class="ep-preview" id="ep-preview" data-open="false">
+  <div class="ep-preview__bar">
+    <span class="ep-preview__title">预览</span>
+    <div class="ep-preview__devices" id="ep-preview-devices"></div>
+    <span class="ep-preview__hint">脚本可运行 · Esc 关闭 · 编辑态与选中不会丢失</span>
+    <button class="ep-preview__close" id="ep-preview-close" title="关闭预览"></button>
+  </div>
+  <div class="ep-preview__stage" id="ep-preview-stage"></div>
+</div>
+
+<div class="ep-toast" id="ep-toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ===================== 图标（全部内联 SVG，零外链） ===================== */
+const S = 'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"';
+const F = 'fill="currentColor" stroke="none"';
+const ICONS = {
+  paste:`<rect x="3.5" y="2.5" width="9" height="11.5" rx="1.5" ${S}/><path d="M6 2.5v-1h4v1" ${S}/><path d="M6 7h4M6 10h3" ${S}/>`,
+  file:`<path d="M4 1.5h5l3 3v10H4z" ${S}/><path d="M9 1.5v3h3" ${S}/><path d="M8 8v4M6 10h4" ${S}/>`,
+  undo:`<path d="M3 7.5h6.5a3 3 0 0 1 0 6H6" ${S}/><path d="M5.5 5 3 7.5 5.5 10" ${S}/>`,
+  redo:`<path d="M13 7.5H6.5a3 3 0 0 0 0 6H10" ${S}/><path d="M10.5 5 13 7.5 10.5 10" ${S}/>`,
+  brush:`<path d="M10.5 2.5 13 5l-5.2 5.2-2.5-2.5z" ${S}/><path d="M5.3 7.7 3 10v3h3l2.3-2.3" ${S}/>`,
+  reset:`<path d="M13.5 8a5.5 5.5 0 1 1-1.7-4" ${S}/><path d="M13.5 2v4h-4" ${S}/>`,
+  play:`<path d="M5.5 3.2 12.5 8l-7 4.8z" ${S}/>`,
+  download:`<path d="M8 2v8" ${S}/><path d="M4.5 6.5 8 10l3.5-3.5" ${S}/><path d="M3 13.5h10" ${S}/>`,
+  copy:`<rect x="2.5" y="2.5" width="7.5" height="7.5" rx="1.5" ${S}/><rect x="6" y="6" width="7.5" height="7.5" rx="1.5" ${S}/>`,
+  panelLeft:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><path d="M6.5 3v10" ${S}/>`,
+  panelRight:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><path d="M9.5 3v10" ${S}/>`,
+  zoomIn:`<circle cx="7" cy="7" r="4.5" ${S}/><path d="M10.5 10.5 14 14" ${S}/><path d="M7 5v4M5 7h4" ${S}/>`,
+  zoomOut:`<circle cx="7" cy="7" r="4.5" ${S}/><path d="M10.5 10.5 14 14" ${S}/><path d="M5 7h4" ${S}/>`,
+  fit:`<path d="M2.5 6V2.5H6" ${S}/><path d="M10 2.5h3.5V6" ${S}/><path d="M13.5 10v3.5H10" ${S}/><path d="M6 13.5H2.5V10" ${S}/>`,
+  close:`<path d="M4 4l8 8M12 4l-8 8" ${S}/>`,
+  trash:`<path d="M3 4.5h10" ${S}/><path d="M6 4.5V3h4v1.5" ${S}/><path d="M4.5 4.5 5 13.5h6l.5-9" ${S}/>`,
+  lock:`<rect x="3.5" y="7" width="9" height="6.5" rx="1.5" ${S}/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" ${S}/>`,
+  eye:`<path d="M1.5 8S4 4.2 8 4.2 14.5 8 14.5 8 12 11.8 8 11.8 1.5 8 1.5 8z" ${S}/><circle cx="8" cy="8" r="1.7" ${S}/>`,
+  chevronDown:`<path d="M4 6.2 8 10l4-3.8" ${S}/>`,
+  chevronRight:`<path d="M6.2 4 10 8l-3.8 4" ${S}/>`,
+  plus:`<path d="M8 3.5v9M3.5 8h9" ${S}/>`,
+  h1:`<path d="M3 3.5v9M9 3.5v9M3 8h6" ${S}/><path d="M12 6.5 14 5.5v7" ${S}/>`,
+  h2:`<path d="M2 3.5v9M8 3.5v9M2 8h6" ${S}/><path d="M11 6.2a1.9 1.9 0 1 1 2.6 1.8L11 12.5h3" ${S}/>`,
+  h3:`<path d="M2 3.5v9M8 3.5v9M2 8h6" ${S}/><path d="M11.2 5.6h2.6l-1.6 2.5M13.8 10.4a1.4 1.4 0 1 1-1.6 1.7" ${S}/>`,
+  text:`<path d="M4 3h8M4 8h8M4 13h5" ${S}/>`,
+  button:`<rect x="2" y="4.5" width="12" height="7" rx="3.5" ${S}/>`,
+  image:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><circle cx="5.6" cy="6.4" r="1.2" ${S}/><path d="M2.4 11.6 6 8l2.8 2.8L11 8.6l2.6 3" ${S}/>`,
+  container:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><path d="M5 6.5h6M5 9.5h4" ${S}/>`,
+  divider:`<path d="M2 8h12" ${S}/><path d="M4.5 4h7" ${S} stroke-dasharray="1.6 1.6"/><path d="M4.5 12h7" ${S} stroke-dasharray="1.6 1.6"/>`,
+  section:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><path d="M2 6.2h12" ${S}/>`,
+  table:`<rect x="2" y="3" width="12" height="10" rx="1.5" ${S}/><path d="M2 6.6h12M6.6 3v10" ${S}/>`,
+  alignLeft:`<path d="M2 2.5v11" ${S}/><rect x="4.4" y="4" width="9" height="2.6" rx=".6" ${F}/><rect x="4.4" y="9.4" width="5.6" height="2.6" rx=".6" ${F}/>`,
+  alignRight:`<path d="M14 2.5v11" ${S}/><rect x="2.6" y="4" width="9" height="2.6" rx=".6" ${F}/><rect x="6" y="9.4" width="5.6" height="2.6" rx=".6" ${F}/>`,
+  alignHCenter:`<path d="M8 2.5v11" ${S}/><rect x="3.5" y="4" width="9" height="2.6" rx=".6" ${F}/><rect x="5.2" y="9.4" width="5.6" height="2.6" rx=".6" ${F}/>`,
+  alignTop:`<path d="M2.5 2h11" ${S}/><rect x="4" y="4.4" width="2.6" height="9" rx=".6" ${F}/><rect x="9.4" y="4.4" width="2.6" height="5.6" rx=".6" ${F}/>`,
+  alignBottom:`<path d="M2.5 14h11" ${S}/><rect x="4" y="2.6" width="2.6" height="9" rx=".6" ${F}/><rect x="9.4" y="6" width="2.6" height="5.6" rx=".6" ${F}/>`,
+  alignVCenter:`<path d="M2.5 8h11" ${S}/><rect x="4" y="3.5" width="2.6" height="9" rx=".6" ${F}/><rect x="9.4" y="5.2" width="2.6" height="5.6" rx=".6" ${F}/>`,
+  distH:`<path d="M2 2.5v11M14 2.5v11" ${S}/><rect x="4.2" y="5" width="2.6" height="6" rx=".6" ${F}/><rect x="9.2" y="5" width="2.6" height="6" rx=".6" ${F}/>`,
+  distV:`<path d="M2.5 2h11M2.5 14h11" ${S}/><rect x="5" y="4.2" width="6" height="2.6" rx=".6" ${F}/><rect x="5" y="9.2" width="6" height="2.6" rx=".6" ${F}/>`,
+  sliders:`<path d="M2 5h7M12.5 5H14" ${S}/><circle cx="10.5" cy="5" r="1.6" ${S}/><path d="M2 11h3M7.5 11H14" ${S}/><circle cx="5.5" cy="11" r="1.6" ${S}/>`
+};
+function icon(name, size){
+  const s = size || 16;
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true">'+(ICONS[name]||'')+'</svg>';
+}
+/** 图标按钮：文字放进视觉隐藏 span —— 保住可访问名，e2e 的 getByRole(name) 仍能命中 */
+function iconBtn(iconName, label, opts){
+  const o = opts || {};
+  const cls = 'ep-btn' + (o.iconOnly ? ' ep-btn--icon' : '') + (o.primary ? ' ep-btn--primary' : '');
+  return '<button class="'+cls+'"'+(o.act ? ' data-act="'+o.act+'"' : '')+(o.disabled ? ' disabled' : '')+
+    ' title="'+label+(o.hint ? '（'+o.hint+'）' : '')+'">'+icon(iconName)+
+    (o.iconOnly ? '<span class="sr-only">'+label+'</span>' : '<span>'+label+'</span>')+'</button>';
+}
+
+/* ===================== 顶栏（R5：分组 + 图标化） ===================== */
+document.getElementById('ep-toolbar').innerHTML =
+  iconBtn('paste','粘贴 HTML',{hint:'Ctrl+V 粘贴源码'}) +
+  iconBtn('file','新建空白') +
+  '<span class="ep-toolbar__sep"></span>' +
+  iconBtn('undo','撤销',{iconOnly:true,hint:'Ctrl+Z'}) +
+  iconBtn('redo','重做',{iconOnly:true,hint:'Ctrl+Shift+Z'}) +
+  iconBtn('brush','格式刷',{iconOnly:true,hint:'双击连续刷'}) +
+  iconBtn('reset','重置位移',{iconOnly:true}) +
+  '<span class="ep-toolbar__sep"></span>' +
+  iconBtn('panelLeft','插入与图层',{iconOnly:true,act:'toggleLeft',hint:'展开 / 收起'}) +
+  iconBtn('panelRight','样式',{iconOnly:true,act:'toggleRight',hint:'展开 / 收起'});
+document.getElementById('ep-preview-btn').innerHTML = icon('play')+'<span>预览</span>';
+document.getElementById('ep-preview-btn').title = '预览（打开全屏覆盖层）';
+document.getElementById('ep-export-btn').innerHTML = icon('download')+'<span>导出 HTML</span>';
+document.getElementById('ep-copy-btn').innerHTML = icon('copy')+'<span class="sr-only">复制 HTML</span>';
+document.getElementById('ep-copy-btn').title = '复制 HTML';
+
+/* ===================== 对齐条（R5：图标化 + 禁用态） ===================== */
+const ALIGN = [
+  ['left','左对齐','alignLeft',2],['right','右对齐','alignRight',2],['hcenter','水平居中','alignHCenter',2],
+  ['top','顶对齐','alignTop',2],['bottom','底对齐','alignBottom',2],['vcenter','垂直居中','alignVCenter',2],
+  ['hdistribute','水平等距','distH',3],['vdistribute','垂直等距','distV',3]
+];
+document.getElementById('ep-alignbar').innerHTML =
+  '<span class="ep-alignbar__label">对齐</span>' +
+  ALIGN.map(a => '<button class="ep-btn ep-btn--icon" data-align="'+a[0]+'" data-need="'+a[3]+
+    '" title="'+a[1]+'">'+icon(a[2])+'<span class="sr-only">'+a[1]+'</span></button>').join('');
+
+/* ===================== 插入面板 ===================== */
+const INSERTS = [
+  ['h1','标题 1'],['h2','标题 2'],['h3','标题 3'],['text','段落'],
+  ['button','按钮'],['image','图片'],['container','容器'],['section','区块'],
+  ['divider','分割线'],['table','表格']
+];
+document.getElementById('ep-insert-panel').innerHTML =
+  '<div class="ep-group-title">插入元素</div><div class="ep-insert-grid">' +
+  INSERTS.map(i => '<button class="ep-insert" data-insert="'+i[0]+'">'+icon(i[0],18)+'<span>'+i[1]+'</span></button>').join('') +
+  '</div><div class="ep-group-title">列表</div>' +
+  '<button class="ep-btn ep-btn--block">项目符号列表</button>' +
+  '<button class="ep-btn ep-btn--block">编号列表</button>' +
+  '<div class="ep-group-title">操作</div>' +
+  '<button class="ep-btn ep-btn--danger ep-btn--block" id="ep-del-btn">'
+    +icon('trash')+'<span>删除选中</span></button>';
+
+/* ===================== 属性面板（分组折叠） ===================== */
+const SECTIONS = [
+  {id:'text',  title:'文字', open:true},
+  {id:'layout',title:'布局', open:false},
+  {id:'deco',  title:'外观', open:false},
+  {id:'box',   title:'尺寸与位置', open:false}
+];
+const BM = (pos) => '<input type="text" data-bm="'+pos+'" data-pos="'+pos+'" inputmode="numeric">';
+function bmInputs(){ return BM('top')+BM('right')+BM('bottom')+BM('left'); }
+document.getElementById('ep-right').innerHTML = SECTIONS.map(s => {
+  let body = '';
+  if (s.id === 'text') body =
+    '<div class="ep-notice" id="ep-style-notice">未选中元素：点击画布中的元素开始编辑</div>' +
+    '<div class="ep-row"><label for="f-family">字体</label><select id="f-family">' +
+      '<option>system-ui</option><option>PingFang SC</option><option>Microsoft YaHei</option>' +
+      '<option>Georgia</option><option>Menlo</option></select></div>' +
+    '<div class="ep-row--split">' +
+      '<div class="ep-field"><div class="ep-row" style="margin:0"><label for="f-size">字号</label>' +
+        '<input id="f-size" type="number" min="8" max="96" placeholder="—"></div></div>' +
+      '<div class="ep-field"><div class="ep-row" style="margin:0"><label for="f-weight">字重</label>' +
+        '<select id="f-weight"><option>400</option><option>500</option><option>600</option><option>700</option></select></div></div>' +
+    '</div>' +
+    '<div class="ep-row--split">' +
+      '<div class="ep-row" style="margin:0"><label for="f-color">文字</label><input id="f-color" type="color" value="#1f2937"></div>' +
+      '<div class="ep-row" style="margin:0"><label for="f-bg">背景</label><input id="f-bg" type="color" value="#ffffff"></div>' +
+    '</div>' +
+    '<div class="ep-row--split">' +
+      '<div class="ep-row" style="margin:0"><label for="f-lh">行高</label><input id="f-lh" type="number" step="0.1" placeholder="—"></div>' +
+      '<div class="ep-row" style="margin:0"><label for="f-ls">字距</label><input id="f-ls" type="number" placeholder="—"></div>' +
+    '</div>' +
+    '<div class="ep-row"><label>对齐</label><div class="ep-seg" id="f-align">' +
+      ['left','center','right'].map(a => '<button data-align-text="'+a+'" title="'+
+        ({left:'左对齐',center:'水平居中',right:'右对齐'})[a]+'">'+
+        icon(a==='left'?'alignLeft':a==='center'?'alignHCenter':'alignRight')+'</button>').join('') +
+    '</div></div>';
+  if (s.id === 'layout') body =
+    '<div class="ep-row"><label for="f-display">显示</label><select id="f-display">' +
+      '<option>block</option><option>flex</option><option>inline-block</option><option>none</option></select></div>' +
+    '<div class="ep-row"><label for="f-position">定位</label><select id="f-position">' +
+      '<option>static</option><option>relative</option><option>absolute</option></select></div>' +
+    '<div class="ep-notice">位移只产生视觉位移（transform:translate），不改文档流位置。</div>';
+  if (s.id === 'deco') body =
+    '<div class="ep-row"><label for="f-radius">圆角</label><input id="f-radius" type="number" placeholder="px"></div>' +
+    '<div class="ep-row--split">' +
+      '<div class="ep-row" style="margin:0"><label for="f-bw">边框</label><input id="f-bw" type="number" placeholder="px"></div>' +
+      '<div class="ep-row" style="margin:0"><label for="f-bc">颜色</label><input id="f-bc" type="color" value="#e8ebf0"></div>' +
+    '</div>' +
+    '<div class="ep-row"><label for="f-shadow">阴影</label><select id="f-shadow">' +
+      '<option>无</option><option>轻微</option><option>中等</option><option>明显</option></select></div>';
+  if (s.id === 'box') body =
+    '<div class="ep-boxmodel">' +
+      '<div class="ep-bm"><span class="ep-bm__tag">外距</span>' + bmInputs() +
+        '<div class="ep-bm ep-bm--pad"><span class="ep-bm__tag">内距</span>' + bmInputs() +
+          '<div class="ep-bm ep-bm--content">内容 <span id="ep-bm-size">—</span></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  return '<section class="ep-section" data-section="'+s.id+'" data-open="'+s.open+'">' +
+    '<button class="ep-section__head">'+icon('chevronDown',14)+'<span>'+s.title+'</span></button>' +
+    '<div class="ep-section__body">'+body+'</div></section>';
+}).join('');
+
+/* ===================== 手柄 ===================== */
+const DIRS = ['nw','n','ne','e','se','s','sw','w'];
+document.getElementById('ep-handle-layer').innerHTML = DIRS.map(d =>
+  '<div data-dir="'+d+'" title="拖拽缩放"></div>').join('');
+
+/* ===================== 状态 ===================== */
+const PAGE_W = 1200;
+const state = {
+  left:true, right:true,
+  zoom:1, autoFit:true,
+  selection: [], hover:null,
+  preview:{open:false, device:'full'},
+  drag:null
+};
+const $ = (id) => document.getElementById(id);
+const app = $('ep-app'), page = $('ep-page'), wrap = $('ep-page-wrap'),
+      stage = $('ep-stage'), viewport = $('ep-viewport'), overlay = $('ep-overlay'),
+      hoverBox = $('ep-hover-box'), selBox = $('ep-selected-box'), selMany = $('ep-selected-many'),
+      ctxbar = $('ep-ctxbar'), crumbs = $('ep-crumbs'), meta = $('ep-meta');
+
+/* ===================== 工具函数 ===================== */
+let toastTimer = null;
+function toast(msg){
+  const el = $('ep-toast');
+  el.textContent = msg; el.dataset.open = 'true';
+  if (toastTimer !== null) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.dataset.open = 'false'; toastTimer = null; }, 2400);
+}
+function setDirty(d){ $('ep-doc').dataset.dirty = d ? 'true' : 'false'; }
+
+/** 元素在页面内的可读名称（tag + #id + .class），与产品 LayersPanel.label 同构 */
+function elLabel(el){
+  const tag = el.tagName.toLowerCase();
+  const id = el.id ? '#' + el.id : '';
+  const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0,1).join('.');
+  return tag + id + (cls ? '.' + cls : '');
+}
+function isRoot(el){ return el === page || el === wrap || el === document.body; }
+
+/* ===================== R2 · 缩放 ===================== */
+function setZoom(z, fromUser){
+  state.zoom = Math.min(2, Math.max(0.25, z));
+  if (fromUser) state.autoFit = false;
+  applyZoom();
+}
+function fitZoom(){
+  const avail = viewport.clientWidth - 32; // 视口内左右各 16px 留白
+  return Math.min(2, Math.max(0.25, avail / PAGE_W));
+}
+function applyZoom(){
+  wrap.style.transform = 'scale(' + state.zoom + ')';
+  const pageH = page.scrollHeight;
+  // 舞台尺寸必须显式给出：子元素被 scale 后不参与父级尺寸计算
+  stage.style.width = (PAGE_W * state.zoom) + 'px';
+  stage.style.height = (pageH * state.zoom) + 'px';
+  $('ep-zoom-val').textContent = Math.round(state.zoom * 100) + '%';
+  renderOverlay();
+}
+function fitIfAuto(){
+  if (!state.autoFit) return;
+  state.zoom = fitZoom();
+  applyZoom();
+}
+
+/* ===================== 选中与覆盖层 ===================== */
+function select(els){
+  state.selection = els.filter(e => !isRoot(e));
+  renderOverlay(); refreshLayers(); refreshStylePanel(); syncButtons();
+}
+function clearSelection(){ select([]); }
+
+function toBox(el){
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { left:r.left - s.left, top:r.top - s.top, width:r.width, height:r.height };
+}
+function place(boxEl, b){
+  boxEl.style.left = b.left + 'px'; boxEl.style.top = b.top + 'px';
+  boxEl.style.width = b.width + 'px'; boxEl.style.height = b.height + 'px';
+}
+function renderOverlay(){
+  const els = state.selection.filter(e => e.isConnected);
+  // hover
+  if (state.hover && !isRoot(state.hover) && els.indexOf(state.hover) < 0){
+    const b = toBox(state.hover);
+    place(hoverBox, b); hoverBox.hidden = false;
+    hoverBox.dataset.fill = (b.width * b.height) > (PAGE_W * page.scrollHeight * 0.25) ? 'false' : 'true';
+  } else hoverBox.hidden = true;
+
+  // 多选虚框
+  if (els.length > 1){
+    const first = toBox(els[0]);
+    selMany.hidden = false;
+    place(selMany, {left:first.left - 3, top:first.top - 3, width:first.width + 6, height:first.height + 6});
+  } else selMany.hidden = true;
+
+  if (els.length === 0){
+    selBox.hidden = true; ctxbar.dataset.open = 'false';
+    Array.from(document.querySelectorAll('#ep-handle-layer [data-dir]')).forEach(h => h.hidden = true);
+    crumbs.textContent = ''; meta.textContent = '';
+    return;
+  }
+  const b = toBox(els[0]);
+  selBox.hidden = false; place(selBox, b);
+
+  // 8 手柄（仅单选）
+  const handles = Array.from(document.querySelectorAll('#ep-handle-layer [data-dir]'));
+  handles.forEach(h => {
+    if (els.length > 1){ h.hidden = true; return; }
+    h.hidden = false;
+    const d = h.dataset.dir, SZ = 9;
+    let x = b.width / 2, y = b.height / 2;
+    if (d.indexOf('w') >= 0) x = 0; else if (d.indexOf('e') >= 0) x = b.width;
+    if (d.indexOf('n') >= 0) y = 0; else if (d.indexOf('s') >= 0) y = b.height;
+    h.style.left = (b.left + x - SZ/2) + 'px';
+    h.style.top  = (b.top  + y - SZ/2) + 'px';
+  });
+
+  renderCtxBar(b, els);
+  renderCrumbs(els[0]);
+  meta.textContent = els.length > 1
+    ? ('已选 ' + els.length + ' 个元素')
+    : (Math.round(b.width / state.zoom) + ' × ' + Math.round(b.height / state.zoom) + ' px');
+  const sz = $('ep-bm-size'); if (sz) sz.textContent = Math.round(b.width/state.zoom)+'×'+Math.round(b.height/state.zoom);
+}
+
+/* ---- R4：浮动上下文工具条 ---- */
+function renderCtxBar(b, els){
+  const multi = els.length > 1;
+  let html = '';
+  html += '<button class="ep-btn ep-btn--icon" data-ctx="fontDown" title="减小字号">'+icon('zoomOut',14)+'</button>';
+  html += '<input class="ep-ctxbar__num" id="ep-ctx-size" type="text" value="'+
+    (parseInt(computed(els[0],'fontSize'),10) || 16)+'" title="字号（px）">';
+  html += '<button class="ep-btn ep-btn--icon" data-ctx="fontUp" title="增大字号">'+icon('zoomIn',14)+'</button>';
+  html += '<input class="ep-ctxbar__swatch" id="ep-ctx-color" type="color" title="文字颜色" value="'+
+    toHex(computed(els[0],'color'))+'">';
+  html += '<span class="ep-ctxbar__sep"></span>';
+  if (multi){
+    html += ALIGN.map(a => '<button class="ep-btn ep-btn--icon" data-align="'+a[0]+'" data-need="'+a[3]+
+      '" title="'+a[1]+'">'+icon(a[2],14)+'<span class="sr-only">'+a[1]+'</span></button>').join('');
+    html += '<span class="ep-ctxbar__sep"></span>';
+  }
+  html += '<button class="ep-btn ep-btn--icon" data-ctx="duplicate" title="复制（Ctrl+D）">'+icon('copy',14)+'</button>';
+  html += '<button class="ep-btn ep-btn--icon" data-ctx="lock" title="锁定 / 解锁">'+icon('lock',14)+'</button>';
+  html += '<button class="ep-btn ep-btn--icon" data-ctx="delete" title="删除（Delete）">'+icon('trash',14)+'</button>';
+  ctxbar.innerHTML = html;
+  ctxbar.dataset.open = 'true';
+
+  // 贴选中框上方居中；上方放不下则翻到下方
+  const w = ctxbar.offsetWidth || 260, h = ctxbar.offsetHeight || 32;
+  const stageW = PAGE_W * state.zoom;
+  let left = b.left + b.width / 2 - w / 2;
+  left = Math.max(4, Math.min(stageW - w - 4, left));
+  let top = b.top - h - 8;
+  if (top < 4) top = b.top + b.height + 8;
+  ctxbar.style.left = left + 'px'; ctxbar.style.top = top + 'px';
+}
+function computed(el, prop){ return getComputedStyle(el)[prop]; }
+function toHex(rgb){
+  const m = /rgba?\(([^)]+)\)/.exec(rgb || ''); if (!m) return '#000000';
+  const p = m[1].split(',').map(s => parseInt(s.trim(), 10));
+  const t = n => (n || 0).toString(16).padStart(2, '0');
+  return '#' + t(p[0]) + t(p[1]) + t(p[2]);
+}
+function renderCrumbs(el){
+  const chain = [];
+  let cur = el;
+  while (cur && cur !== page.parentElement && cur.nodeType === 1){ chain.unshift(cur); cur = cur.parentElement; }
+  crumbs.innerHTML = chain.map((n, i) =>
+    (i ? '<span class="ep-crumb__sep">/</span>' : '') +
+    '<button class="ep-crumb" data-crumb="'+i+'">'+elLabel(n)+'</button>').join('');
+  crumbs._chain = chain;
+}
+
+/* ===================== 同步禁用态 ===================== */
+function syncButtons(){
+  const n = state.selection.length;
+  // 对齐/分布：对齐类需 2 个，分布类需 3 个
+  Array.from(document.querySelectorAll('[data-align]')).forEach(b => {
+    b.disabled = n < Number(b.dataset.need);
+  });
+  const del = $('ep-del-btn'); if (del) del.disabled = n === 0;
+}
+
+/* ===================== 属性面板同步 ===================== */
+function refreshStylePanel(){
+  const els = state.selection;
+  const notice = $('ep-style-notice');
+  const fields = ['f-family','f-size','f-weight','f-color','f-bg','f-lh','f-ls'];
+  const get = (id) => $(id);
+  if (els.length === 0){
+    notice.style.display = 'block';
+    notice.textContent = '未选中元素：点击画布中的元素开始编辑';
+    fields.forEach(id => { const f = get(id); if (f){ f.disabled = true; f.value = ''; } });
+    Array.from(document.querySelectorAll('[data-align-text]')).forEach(b => b.disabled = true);
+    return;
+  }
+  notice.style.display = 'none';
+  fields.forEach(id => { const f = get(id); if (f) f.disabled = false; });
+  Array.from(document.querySelectorAll('[data-align-text]')).forEach(b => {
+    b.disabled = false;
+    b.setAttribute('aria-pressed', String(computed(els[0],'textAlign') === b.dataset.alignText));
+  });
+  const cs = computed(els[0], 'fontSize');
+  get('f-size').value = String(Math.round(parseFloat(cs) || 0));
+  get('f-lh').value = String(parseFloat(computed(els[0],'lineHeight')) || '');
+  get('f-ls').value = String(parseFloat(computed(els[0],'letterSpacing')) || 0);
+  get('f-color').value = toHex(computed(els[0],'color'));
+  get('f-bg').value = toHex(computed(els[0],'backgroundColor'));
+  get('f-weight').value = computed(els[0],'fontWeight');
+  const fam = computed(els[0],'fontFamily');
+  const fsel = get('f-family');
+  fsel.value = Array.from(fsel.options).find(o => fam.indexOf(o.value) >= 0) ? 
+    Array.from(fsel.options).find(o => fam.indexOf(o.value) >= 0).value : fsel.options[0].value;
+}
+
+/* ===================== 图层树 ===================== */
+function refreshLayers(){
+  const host = $('ep-layers-panel');
+  const rows = [];
+  (function walk(el, depth){
+    if (el.nodeType !== 1 || depth > 3) return;
+    rows.push({ el: el, depth: depth });
+    if (depth < 3) Array.from(el.children).forEach(c => walk(c, depth + 1));
+  })(page, 0);
+  host.innerHTML = '<div class="ep-group-title">图层 · 共 ' + (rows.length - 1) + ' 个节点</div>' +
+    rows.slice(1).map(r =>
+      '<div class="ep-layer-row' + (state.selection.indexOf(r.el) >= 0 ? ' ep-layer-row--selected' : '') +
+      '" data-el="' + rows.indexOf(r) + '" style="padding-left:' + (r.depth * 14 + 4) + 'px">' +
+        '<span class="ep-layer-row__chev">' + (r.el.children.length ? icon('chevronDown',12) : '') + '</span>' +
+        '<span class="ep-layer-row__name">' + elLabel(r.el) + '</span>' +
+        '<span class="ep-layer-row__acts">' +
+          '<button title="显示 / 隐藏">' + icon('eye',13) + '</button>' +
+          '<button title="锁定">' + icon('lock',13) + '</button>' +
+        '</span>' +
+      '</div>').join('');
+  host._rows = rows;
+
+  // 点选 → 选中真实元素
+  Array.from(host.querySelectorAll('.ep-layer-row')).forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const r = host._rows[Number(row.dataset.el)];
+      if (r) select(e.shiftKey ? state.selection.concat([r.el]) : [r.el]);
+    });
+  });
+}
+
+/* ===================== 事件：顶栏 ===================== */
+app.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const act = btn.dataset.act;
+  if (act === 'toggleLeft'){ state.left = !state.left; app.dataset.left = state.left ? 'open' : 'closed';
+    btn.classList.toggle('ep-btn--active', state.left); requestAnimationFrame(fitIfAuto); }
+  if (act === 'toggleRight'){ state.right = !state.right; app.dataset.right = state.right ? 'open' : 'closed';
+    btn.classList.toggle('ep-btn--active', state.right); requestAnimationFrame(fitIfAuto); }
+});
+$('ep-preview-btn').addEventListener('click', () => openPreview());
+$('ep-export-btn').addEventListener('click', () => { setDirty(false); toast('导出成功（已剥离编辑器注入物）'); });
+$('ep-copy-btn').addEventListener('click', () => toast('已复制 HTML 到剪贴板'));
+
+/* ===================== 事件：面板 ===================== */
+document.querySelectorAll('.ep-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ep-tab').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+    document.querySelectorAll('.ep-tabpanel').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+    if (tab.dataset.tab === 'layers') refreshLayers();
+  });
+});
+document.querySelectorAll('.ep-section__head').forEach(h => {
+  h.addEventListener('click', () => {
+    const sec = h.parentElement;
+    sec.dataset.open = sec.dataset.open === 'true' ? 'false' : 'true';
+  });
+});
+$('ep-del-btn').addEventListener('click', () => {
+  if (state.selection.length === 0) return;
+  state.selection.forEach(el => el.remove());
+  clearSelection(); setDirty(true); toast('已删除选中元素');
+});
+
+/* ===================== 事件：画布选择 / 悬停 / 拖拽 ===================== */
+page.addEventListener('pointerover', (e) => {
+  const el = e.target;
+  if (isRoot(el) || !page.contains(el)) { state.hover = null; }
+  else state.hover = el;
+  renderOverlay();
+});
+page.addEventListener('pointerleave', () => { state.hover = null; renderOverlay(); });
+
+page.addEventListener('click', (e) => {
+  const el = e.target;
+  if (isRoot(el) || !page.contains(el)) { clearSelection(); return; }
+  if (e.shiftKey) {
+    const i = state.selection.indexOf(el);
+    const next = state.selection.slice();
+    if (i >= 0) next.splice(i, 1); else next.push(el);
+    select(next);
+  } else select([el]);
+});
+
+// 拖拽（在覆盖层的选中框上按下）：只改视觉位移 translate，不改文档流
+selBox.addEventListener('pointerdown', (e) => {
+  if (state.selection.length === 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = state.selection[0];
+  const sx = e.clientX, sy = e.clientY;
+  const start = el.style.transform || '';
+  const move = (ev) => {
+    const dx = (ev.clientX - sx) / state.zoom;
+    const dy = (ev.clientY - sy) / state.zoom;
+    el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    renderOverlay();
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    if ((el.style.transform || '') !== start) setDirty(true);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+});
+
+// 8 手柄缩放
+document.querySelectorAll('#ep-handle-layer [data-dir]').forEach(h => {
+  h.addEventListener('pointerdown', (e) => {
+    const el = state.selection[0]; if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    const dir = h.dataset.dir;
+    const box = toBox(el);
+    const w0 = box.width / state.zoom, h0 = box.height / state.zoom;
+    const sx = e.clientX, sy = e.clientY;
+    const move = (ev) => {
+      const dx = (ev.clientX - sx) / state.zoom, dy = (ev.clientY - sy) / state.zoom;
+      let w = w0, hh = h0;
+      if (dir.indexOf('e') >= 0) w = w0 + dx; else if (dir.indexOf('w') >= 0) w = w0 - dx;
+      if (dir.indexOf('s') >= 0) hh = h0 + dy; else if (dir.indexOf('n') >= 0) hh = h0 - dy;
+      el.style.width = Math.max(12, Math.round(w)) + 'px';
+      el.style.height = Math.max(12, Math.round(hh)) + 'px';
+      applyZoom();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setDirty(true);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  });
+});
+
+// 右键菜单（简版）
+page.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (state.selection.length === 0) return;
+  toast('右键菜单：复制 / 重置位移 / 锁定 / 删除');
+});
+
+/* ===================== 事件：浮动工具条 ===================== */
+ctxbar.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ctx]'); if (!b) return;
+  const act = b.dataset.ctx;
+  const el = state.selection[0]; if (!el) return;
+  if (act === 'delete'){ el.remove(); clearSelection(); setDirty(true); toast('已删除'); return; }
+  if (act === 'duplicate'){
+    const clone = el.cloneNode(true);
+    el.parentElement.insertBefore(clone, el.nextSibling);
+    select([clone]); setDirty(true); toast('已复制'); return;
+  }
+  if (act === 'lock'){ toast(el.dataset.locked === '1' ? '已解锁' : '已锁定'); el.dataset.locked = el.dataset.locked === '1' ? '0' : '1'; return; }
+  if (act === 'fontUp' || act === 'fontDown'){
+    const cur = parseInt(computed(el,'fontSize'), 10) || 16;
+    el.style.fontSize = Math.max(8, cur + (act === 'fontUp' ? 2 : -2)) + 'px';
+    applyZoom(); refreshStylePanel(); setDirty(true); return;
+  }
+});
+ctxbar.addEventListener('input', (e) => {
+  const el = state.selection[0]; if (!el) return;
+  if (e.target.id === 'ep-ctx-size'){ el.style.fontSize = (parseInt(e.target.value,10)||16) + 'px'; applyZoom(); setDirty(true); }
+  if (e.target.id === 'ep-ctx-color'){ el.style.color = e.target.value; applyZoom(); setDirty(true); }
+});
+
+/* ===================== 事件：状态栏 / 面包屑 / 对齐 ===================== */
+crumbs.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-crumb]'); if (!b) return;
+  const el = crumbs._chain[Number(b.dataset.crumb)];
+  if (el) select([el]);
+});
+app.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-align]'); if (!b || b.disabled) return;
+  doAlign(b.dataset.align);
+});
+function doAlign(type){
+  const els = state.selection;
+  if (els.length < 2) return;
+  const boxes = els.map(el => toBox(el));
+  if (type === 'left'){ const m = Math.min.apply(null, boxes.map(b=>b.left)); els.forEach(el => shiftTo(el, m, null)); }
+  else if (type === 'right'){ const m = Math.max.apply(null, boxes.map(b=>b.left+b.width)); els.forEach(el => shiftTo(el, m - toBox(el).width, null)); }
+  else if (type === 'hcenter'){ const m = boxes.reduce((s,b)=>s+b.left+b.width/2,0)/els.length; els.forEach(el => shiftTo(el, m - toBox(el).width/2, null)); }
+  else if (type === 'top'){ const m = Math.min.apply(null, boxes.map(b=>b.top)); els.forEach(el => shiftTo(el, null, m)); }
+  else if (type === 'bottom'){ const m = Math.max.apply(null, boxes.map(b=>b.top+b.height)); els.forEach(el => shiftTo(el, null, m - toBox(el).height)); }
+  else if (type === 'vcenter'){ const m = boxes.reduce((s,b)=>s+b.top+b.height/2,0)/els.length; els.forEach(el => shiftTo(el, null, m - toBox(el).height/2)); }
+  else toast('等距分布需要至少 3 个元素，且本原型只演示对齐');
+  applyZoom(); setDirty(true);
+}
+/** 用 translate 把元素推到目标屏幕坐标（原型内以像素近似，真实产品走 MoveCommand） */
+function shiftTo(el, targetLeft, targetTop){
+  const b = toBox(el);
+  const dx = (targetLeft === null ? 0 : (targetLeft - b.left)) / state.zoom;
+  const dy = (targetTop === null ? 0 : (targetTop - b.top)) / state.zoom;
+  const cur = el.style.transform || '';
+  const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(cur);
+  const px = m ? parseFloat(m[1]) : 0, py = m ? parseFloat(m[2]) : 0;
+  el.style.transform = 'translate(' + (px + dx) + 'px,' + (py + dy) + 'px)';
+}
+
+/* ===================== 事件：样式字段真实生效 ===================== */
+$('f-size').addEventListener('input', e => applyAll('fontSize', e.target.value ? e.target.value + 'px' : ''));
+$('f-weight').addEventListener('change', e => applyAll('fontWeight', e.target.value));
+$('f-color').addEventListener('input', e => applyAll('color', e.target.value));
+$('f-bg').addEventListener('input', e => applyAll('backgroundColor', e.target.value));
+$('f-lh').addEventListener('input', e => applyAll('lineHeight', e.target.value || 'normal'));
+$('f-ls').addEventListener('input', e => applyAll('letterSpacing', e.target.value ? e.target.value + 'px' : 'normal'));
+$('f-family').addEventListener('change', e => applyAll('fontFamily', e.target.value));
+$('f-radius').addEventListener('input', e => applyAll('borderRadius', e.target.value ? e.target.value + 'px' : ''));
+$('f-bw').addEventListener('input', e => applyAll('borderWidth', e.target.value ? e.target.value + 'px' : ''));
+$('f-display').addEventListener('change', e => applyAll('display', e.target.value));
+function applyAll(prop, v){
+  if (state.selection.length === 0) return;
+  state.selection.forEach(el => { el.style[prop] = v; });
+  applyZoom(); setDirty(true);
+}
+document.querySelectorAll('[data-align-text]').forEach(b => {
+  b.addEventListener('click', () => {
+    applyAll('textAlign', b.dataset.alignText);
+    Array.from(document.querySelectorAll('[data-align-text]')).forEach(x =>
+      x.setAttribute('aria-pressed', String(x === b)));
+  });
+});
+document.querySelectorAll('[data-bm]').forEach(inp => {
+  inp.addEventListener('input', () => {
+    if (state.selection.length === 0) return;
+    const side = inp.dataset.bm;
+    const isPad = !!inp.closest('.ep-bm--pad');
+    const prop = (isPad ? 'padding' : 'margin') + '-' + side;
+    applyAll(prop, inp.value ? inp.value + 'px' : '');
+  });
+});
+
+/* ===================== 事件：缩放控件 ===================== */
+$('ep-zoom-in').addEventListener('click', () => setZoom(state.zoom + 0.1, true));
+$('ep-zoom-out').addEventListener('click', () => setZoom(state.zoom - 0.1, true));
+$('ep-zoom-val').addEventListener('click', () => setZoom(1, true));
+$('ep-zoom-fit').addEventListener('click', () => { state.autoFit = true; state.zoom = fitZoom(); applyZoom(); toast('已适应宽度'); });
+$('ep-zoom-in').innerHTML = icon('zoomIn',14);
+$('ep-zoom-out').innerHTML = icon('zoomOut',14);
+$('ep-zoom-fit').innerHTML = icon('fit',14);
+
+/* ===================== R1 · 预览覆盖层 ===================== */
+const DEVICES = [['375','手机 375'],['768','平板 768'],['1280','桌面 1280'],['full','全宽']];
+$('ep-preview-devices').innerHTML = DEVICES.map(d =>
+  '<button data-device="'+d[0]+'" aria-pressed="'+(d[0]==='full')+'">'+d[1]+'</button>').join('');
+$('ep-preview-close').innerHTML = icon('close',14);
+
+function openPreview(){
+  state.preview.open = true;
+  // 先显形再渲染。但更要紧的是：renderPreview 不再读 stage 的 clientWidth/Height
+  // —— 覆盖层刚显形时布局未必已结算，读到的可能是 0（实测导致预览帧被算成 335px）。
+  // 改为完全由 window.innerWidth/Height 推导，去掉对布局时机的依赖。
+  $('ep-preview').dataset.open = 'true';
+  renderPreview();
+  toast('预览已打开（脚本可运行）· Esc 关闭');
+}
+function closePreview(){
+  state.preview.open = false;
+  $('ep-preview').dataset.open = 'false';
+  $('ep-preview-stage').innerHTML = '';
+  toast('已回到编辑态 · 选中与滚动位置保持不变');
+}
+const PREVIEW_PAD = 24;
+function renderPreview(){
+  const device = state.preview.device;
+  const frame = document.createElement('div');
+  frame.className = 'ep-preview__frame';
+  const availW = window.innerWidth - PREVIEW_PAD * 2;
+  const w = device === 'full' ? Math.min(1440, availW) : Number(device);
+  frame.style.width = w + 'px';
+  frame.innerHTML = page.outerHTML.replace('id="ep-page"', 'id="ep-preview-page"');
+  const stageEl = $('ep-preview-stage');
+  stageEl.innerHTML = '';
+  stageEl.appendChild(frame);
+  // 缩放策略（对齐 Figma / Canva 的预览行为）：
+  //   只在「帧宽超出可用宽度」时横向等比缩小；高度溢出交给 stage 自己滚动。
+  //   早期版本按高度也缩一次，结果手机档（375）被压到 0.985 倍、字号肉眼变小 —— 那是错的，
+  //   窄设备就该滚动，不该把内容挤扁。
+  const scale = w > availW ? Math.max(0.4, availW / w) : 1;
+  frame.style.transform = 'scale(' + scale + ')';
+  frame.style.marginBottom = '0';
+  frame.dataset.scale = String(Math.round(scale * 1000) / 1000);
+}
+$('ep-preview').addEventListener('click', (e) => {
+  const d = e.target.closest('[data-device]'); if (!d) return;
+  state.preview.device = d.dataset.device;
+  Array.from(document.querySelectorAll('#ep-preview-devices button')).forEach(b =>
+    b.setAttribute('aria-pressed', String(b === d)));
+  renderPreview();
+});
+$('ep-preview-close').addEventListener('click', closePreview);
+$('ep-preview').addEventListener('click', (e) => {
+  if (e.target.id === 'ep-preview' || e.target.id === 'ep-preview-stage') closePreview();
+});
+
+/* ===================== 键盘 ===================== */
+/** 焦点在输入控件内时，不吃按键 —— 否则在字号框里按 Backspace 会把元素删掉 */
+function typingInField(e){
+  const t = e.target;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+}
+window.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && (e.key === '=' || e.key === '+')){ e.preventDefault(); setZoom(state.zoom + 0.1, true); return; }
+  if (mod && e.key === '-'){ e.preventDefault(); setZoom(state.zoom - 0.1, true); return; }
+  if (mod && e.key === '0'){ e.preventDefault(); setZoom(1, true); return; }
+  if (mod && e.key === '1'){ e.preventDefault(); state.autoFit = true; state.zoom = fitZoom(); applyZoom(); return; }
+  if (e.key === 'Escape'){
+    if (state.preview.open) closePreview();
+    else { clearSelection(); if (typingInField(e)) e.target.blur(); }
+    return;
+  }
+  if (state.preview.open) return;
+  if (typingInField(e)) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection.length){
+    e.preventDefault(); state.selection.forEach(el => el.remove()); clearSelection(); setDirty(true); toast('已删除'); return;
+  }
+  if (mod && e.key.toLowerCase() === 'd' && state.selection.length){
+    e.preventDefault();
+    const el = state.selection[0], clone = el.cloneNode(true);
+    el.parentElement.insertBefore(clone, el.nextSibling);
+    select([clone]); setDirty(true); toast('已复制'); return;
+  }
+  if (e.key.indexOf('Arrow') === 0 && state.selection.length){
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    state.selection.forEach(el => {
+      const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(el.style.transform || '');
+      const px = m ? parseFloat(m[1]) : 0, py = m ? parseFloat(m[2]) : 0;
+      el.style.transform = 'translate(' + (px + dx) + 'px,' + (py + dy) + 'px)';
+    });
+    applyZoom(); setDirty(true);
+  }
+});
+
+/* ===================== 初始化 ===================== */
+refreshLayers();
+refreshStylePanel();
+syncButtons();
+state.zoom = fitZoom();
+applyZoom();
+window.addEventListener('resize', () => requestAnimationFrame(fitIfAuto));
+// 首次进入给一条引导提示
+setTimeout(() => toast('点画布中的元素选中，选中框上方会浮出上下文工具条'), 400);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{
+  "prefix": "before",
+  "htmlPath": "qa/report/ui-refactor-p1/before.html",
+  "results": [
+    {
+      "id": "A-canvas-1280x720",
+      "status": "OK",
+      "viewport": "1280×720",
+      "canvas": "1248×600",
+      "hostY": 106,
+      "bottomGap": 14,
+      "docScroll": "无",
+      "note": "产品默认态（双面板收起 · 自动适宽开启）",
+      "pageErrors": []
+    },
+    {
+      "id": "B-panels-open-1440x900",
+      "status": "OK",
+      "viewport": "1440×900",
+      "canvas": "768×600",
+      "hostY": 106,
+      "bottomGap": 194,
+      "docScroll": "无",
+      "note": "双面板全开：三栏并存时画布仍吃满可用高度",
+      "pageErrors": []
+    },
+    {
+      "id": "C-select-element",
+      "status": "OK",
+      "viewport": "1280×720",
+      "canvas": "608×600",
+      "hostY": 106,
+      "bottomGap": 14,
+      "docScroll": "22px",
+      "note": "工具条带 h （基线版无 .ep-toolstrip） → （基线版无 .ep-toolstrip） ｜ 画布 y 106 → 106 ｜ 位移 0px（0 为不跳动）",
+      "pageErrors": []
+    },
+    {
+      "id": "D-preview",
+      "status": "OK",
+      "viewport": "1280×720",
+      "canvas": "隐藏",
+      "hostY": null,
+      "bottomGap": null,
+      "docScroll": "600px",
+      "note": "无 #ep-preview-overlay（基线版走内嵌预览宿主）· 预览帧 rect=[0,720,1280,600] · 可见高度 0/720px",
+      "pageErrors": []
+    },
+    {
+      "id": "E-preview-device-tablet",
+      "status": "SKIP",
+      "reason": "locator.click: Timeout 30000ms exceeded."
+    },
+    {
+      "id": "F-zoom-narrow-1024x768",
+      "status": "OK",
+      "viewport": "1024×768",
+      "canvas": "352×600",
+      "hostY": 138,
+      "bottomGap": 30,
+      "docScroll": "无",
+      "note": "自动适宽 → dataset.zoom=（基线版无缩放系统） · transform=none · 渲染视口宽 offsetWidth=352px（设计宽 1200px，即一屏看到整幅版面的 29%）",
+      "pageErrors": []
+    },
+    {
+      "id": "G-style-sections",
+      "status": "SKIP",
+      "reason": "无 .ep-section 分组 —— 基线版属性区未分组"
+    }
+  ]
+}

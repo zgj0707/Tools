@@ -1,0 +1,1675 @@
+<!--
+  ════════════════════════════════════════════════════════════════════════════════════════
+  易页 EasyPage · UI 原型 B 版 · 浅色设计系统风（Light System）
+  文件：docs/ui-prototypes/prototype-b-light-system.html    单文件 / 内联 CSS+JS / 零外链
+  ════════════════════════════════════════════════════════════════════════════════════════
+
+  【设计意图】（≤80 字）
+  企业级设计系统的浅色工作台：主色 #165DFF 承担选中与主操作，圆角 8–12px、卡片分区、
+  留白舒展，用阴影而非重边框表达层级；深浅双套 token，可直接落地为 CSS 变量。
+
+  【与另两版的关键差异】
+  · 色彩体系：浅色中性灰底 #F2F3F5 + 白卡片，主色 #165DFF / 强调色 #722ED1；
+    A 版是深色暗场，C 版近乎无 chrome。选中框与手柄改用主色（保留 2px 实线 / 浅色 hover /
+    8 方形手柄的语义，仅换色），区别于 A/C 的橙色系。
+  · 信息密度：中密度。面板用「卡片 + 分组 + 分隔线」表达分区，控件带文字标签，控件行高 30px；
+    A 版更紧凑（分隔线分区）、C 版更稀疏。
+  · 工具布局：三栏固定工作台（左 264 插入+图层 / 中画布 / 右 320 样式），工具常驻可见；
+    C 版是浮动词条 + 按需滑出。
+
+  【13 个功能区块索引】
+   1 一级工具栏 ............ .ep-ribbon（顶部卡片，7 个按钮）
+   2 对齐/分布条 ........... .ep-alignbar（8 个按钮，分组）
+   3 导入区 ................ .ep-import（左栏首卡：多行文本框 + 选择文件）
+   4 草稿区 ................ .ep-draft（左栏次卡：最近草稿 + 继续/删除）
+   5 左侧「插入」面板 ...... .ep-elements（左栏第三卡）
+   6 左侧「图层」面板 ...... .ep-layers（左栏第四卡）
+   7 编辑画布 .............. .ep-canvas / #ep-paper + #ep-overlay（选中框/手柄/hover/锁定）
+   8 右侧「样式」面板 ...... .ep-style（右栏，含空态/不可编辑提示态/多选混合态）
+   9 预览态 ................ 画布卡头部「编辑 | 预览」分段控件 → #ep-preview-card
+  10 底部面包屑 ........... .ep-statusbar / #ep-crumb-list
+  11 toast ............... #ep-toast（浮层，自动 2.4s 消失）
+  12 右键菜单 ............ #ep-menu（画布元素上右键唤起）
+  13 就地改字态 .......... 画布元素上双击 → .is-editing + 「编辑中」标签 + 光标
+
+  【交互触发方式】（原型仅表达视觉与交互意图，不代表已实现真实编辑能力）
+   · 点击画布元素 → 选中框 + 8 手柄 + 右栏激活；Shift+点击 → 多选（面板出现「混合」）
+   · 双击画布元素 → 就地改字态；点击空白处提交
+   · 画布元素上右键 → 右键菜单
+   · 画布卡头部「编辑 | 预览」→ 切换预览态；工具栏「收起左栏 / 展开左栏」→ 折叠左面板
+   · 图层面板行 → 点击同步选中；🔒/👁 可切换
+   · 右上角 ☀/☾ → 深浅模式切换
+
+  【已知取舍】
+   · 左栏四张卡（导入 / 草稿 / 插入 / 图层）保持自然高度，溢出由左栏整体滚动承担：
+     1440×900 下四张卡的头与约 2–3 行图层可见，其余在左栏内滚动；1600×1000 几乎全见。
+     刻意不让卡片被 flex 压扁——压扁会裁掉卡片内容（插入的按钮网格会被切一半）。
+   · 右侧样式面板头固定、面板体滚动；1280×800 下「链接」分组需在面板内滚动才可见。
+   · 选中框 / 手柄沿用「2px 实线 + 浅色 hover + 8 个方形手柄」语义，但换用主色系
+     （原实现为橙色系 rgba(230,81,0,.95)；A/C 两版可保留橙色）。
+   · 「格式刷」的连续态是静态表达（点到即亮 + 「连续」角标），不代表真实刷取逻辑。
+
+  ════════════════════════════════════════════════════════════════════════════════════════
+  【TOKEN 表】—— 可直接抄成 CSS 变量（浅色 = :root，深色 = html[data-ep-theme="dark"]）
+  ════════════════════════════════════════════════════════════════════════════════════════
+
+  ── 色彩 · 品牌 ───────────────────────────────────────────────
+  语义              浅色                      深色
+  主色              #165DFF                   #4080FF
+  主色 hover        #0E42D2                   #5A93FF
+  主色 active       #0A2FB0                   #2B6BFF
+  主色浅底          #E8F0FF                   #17294D
+  主色聚焦环        rgba(22,93,255,.18)       rgba(64,128,255,.28)
+  强调色            #722ED1                   #A97AFF
+  强调色浅底        #F3EBFF                   #2A1E45
+
+  ── 色彩 · 功能 ───────────────────────────────────────────────
+  成功              #00B42A                   #27C346
+  警告              #FF7D00                   #FF9A2E
+  危险              #F53F3F                   #FF6B6B
+
+  ── 色彩 · 表面与文本 ─────────────────────────────────────────
+  语义              浅色                      深色
+  页面底            #F2F3F5                   #17171A
+  卡片面            #FFFFFF                   #232324
+  下沉面（画布底）  #F7F8FA                   #1D1D1F
+  悬停面            #F2F3F5                   #2E2E30
+  激活面            #E8F0FF                   #17294D
+  边框              #E5E6EB                   #333335
+  强边框            #C9CDD4                   #48484A
+  一级文本          #1D2129                   #F7F8FA
+  二级文本          #4E5969                   #C9CDD4
+  三级文本          #86909C                   #86909C
+  反色文本          #FFFFFF                   #FFFFFF
+  画布纸张          #FFFFFF                   #FFFFFF（页面自身样式不随主题变）
+
+  ── 覆盖层（选中 / hover / 手柄）──────────────────────────────
+  选中框            2px 实线 var(--ep-ov-select) = #165DFF / #4080FF
+  hover 边框        1px 实线 rgba(22,93,255,.55)
+  hover 填充        rgba(22,93,255,.10)       ← 浅色高亮
+  手柄              10px 方形，圆角 2px，填充 #FFFFFF，描边 2px 主色
+  锁定徽标          底色 #FFFFFF，描边主色，图标色 var(--ep-warning)
+  就地编辑          1.5px 虚线 var(--ep-accent) + 「编辑中」强调色标签
+
+  ── 间距 ──────────────────────────────────────────────────────
+  --ep-sp-1:4px  --ep-sp-2:8px  --ep-sp-3:12px  --ep-sp-4:16px
+  --ep-sp-5:20px --ep-sp-6:24px --ep-sp-8:32px
+  控件行高 30px；区块内边距 12px；卡片内边距 12–16px；栏间距 10px
+
+  ── 圆角 ──────────────────────────────────────────────────────
+  --ep-r-1:4px（chip/标签）  --ep-r-2:8px（按钮/输入/小卡）
+  --ep-r-3:12px（卡片/画布纸张）  --ep-r-4:16px（浮层大卡）  --ep-r-full:999px（药丸）
+
+  ── 字号 / 行高 ───────────────────────────────────────────────
+  11px 图层与徽标 / 12px 面板正文与按钮 / 13px 控件与状态栏
+  14px 卡片标题 / 16px 面板大标题 / 18–20px 空态标题
+  行高：--ep-lh-tight:1.25  --ep-lh-base:1.5
+  字重：400 正文 / 500 控件 / 600 标题与主按钮
+  字体栈：-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif
+
+  ── 阴影（层级靠阴影 + 留白，而非重边框）───────────────────────
+  --ep-sh-1: 0 1px 2px rgba(29,33,41,.06)     卡片常态
+  --ep-sh-2: 0 2px 8px rgba(29,33,41,.08)     按钮悬停 / 输入聚焦
+  --ep-sh-3: 0 8px 24px rgba(29,33,41,.10)    画布纸张 / 下拉
+  --ep-sh-4: 0 16px 40px rgba(29,33,41,.16)   浮层（toast / 右键菜单）
+  ════════════════════════════════════════════════════════════════════════════════════════
+-->
+<!DOCTYPE html>
+<html lang="zh-CN" data-ep-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>易页 EasyPage · B 版原型（浅色设计系统风）</title>
+<style>
+/* ═══════════ 1. TOKEN（浅色为默认） ═══════════ */
+:root{
+  color-scheme: light;
+  /* 品牌 */
+  --ep-primary:#165DFF; --ep-primary-hover:#0E42D2; --ep-primary-active:#0A2FB0;
+  --ep-primary-subtle:#E8F0FF; --ep-primary-ring:rgba(22,93,255,.18);
+  --ep-accent:#722ED1; --ep-accent-subtle:#F3EBFF;
+  /* 功能 */
+  --ep-success:#00B42A; --ep-warning:#FF7D00; --ep-danger:#F53F3F;
+  /* 表面 */
+  --ep-bg-body:#F2F3F5; --ep-bg-surface:#FFFFFF; --ep-bg-sunken:#F7F8FA;
+  --ep-bg-hover:#F2F3F5; --ep-bg-active:#E8F0FF;
+  /* 边框 */
+  --ep-border:#E5E6EB; --ep-border-strong:#C9CDD4;
+  /* 文本 */
+  --ep-text-1:#1D2129; --ep-text-2:#4E5969; --ep-text-3:#86909C; --ep-text-inv:#FFFFFF;
+  /* 覆盖层 */
+  --ep-ov-select:#165DFF; --ep-ov-hover-border:rgba(22,93,255,.55); --ep-ov-hover-bg:rgba(22,93,255,.10);
+  --ep-ov-handle:#FFFFFF; --ep-ov-lock:#FFFFFF;
+  /* 间距 */
+  --ep-sp-1:4px; --ep-sp-2:8px; --ep-sp-3:12px; --ep-sp-4:16px;
+  --ep-sp-5:20px; --ep-sp-6:24px; --ep-sp-8:32px;
+  /* 圆角 */
+  --ep-r-1:4px; --ep-r-2:8px; --ep-r-3:12px; --ep-r-4:16px; --ep-r-full:999px;
+  /* 字号 */
+  --ep-fs-11:11px; --ep-fs-12:12px; --ep-fs-13:13px; --ep-fs-14:14px;
+  --ep-fs-16:16px; --ep-fs-18:18px; --ep-fs-20:20px;
+  --ep-lh-tight:1.25; --ep-lh-base:1.5;
+  /* 阴影 */
+  --ep-sh-1:0 1px 2px rgba(29,33,41,.06);
+  --ep-sh-2:0 2px 8px rgba(29,33,41,.08);
+  --ep-sh-3:0 8px 24px rgba(29,33,41,.10);
+  --ep-sh-4:0 16px 40px rgba(29,33,41,.16);
+  /* 动效 */
+  --ep-ease:cubic-bezier(.2,.7,.3,1); --ep-dur:160ms;
+  /* 布局 */
+  --ep-left-w:264px; --ep-right-w:320px;
+  --ep-font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+}
+/* 深色：显式切换 */
+html[data-ep-theme="dark"]{
+  color-scheme: dark;
+  --ep-primary:#4080FF; --ep-primary-hover:#5A93FF; --ep-primary-active:#2B6BFF;
+  --ep-primary-subtle:#17294D; --ep-primary-ring:rgba(64,128,255,.28);
+  --ep-accent:#A97AFF; --ep-accent-subtle:#2A1E45;
+  --ep-success:#27C346; --ep-warning:#FF9A2E; --ep-danger:#FF6B6B;
+  --ep-bg-body:#17171A; --ep-bg-surface:#232324; --ep-bg-sunken:#1D1D1F;
+  --ep-bg-hover:#2E2E30; --ep-bg-active:#17294D;
+  --ep-border:#333335; --ep-border-strong:#48484A;
+  --ep-text-1:#F7F8FA; --ep-text-2:#C9CDD4; --ep-text-3:#86909C; --ep-text-inv:#FFFFFF;
+  --ep-ov-select:#4080FF; --ep-ov-hover-border:rgba(64,128,255,.7); --ep-ov-hover-bg:rgba(64,128,255,.16);
+  --ep-sh-1:0 1px 2px rgba(0,0,0,.4);
+  --ep-sh-2:0 2px 8px rgba(0,0,0,.45);
+  --ep-sh-3:0 8px 24px rgba(0,0,0,.5);
+  --ep-sh-4:0 16px 40px rgba(0,0,0,.6);
+}
+/* 深色：跟随系统（未显式指定主题时生效） */
+@media (prefers-color-scheme: dark){
+  html:not([data-ep-theme]){ color-scheme:dark;
+    --ep-primary:#4080FF; --ep-primary-hover:#5A93FF; --ep-primary-active:#2B6BFF;
+    --ep-primary-subtle:#17294D; --ep-primary-ring:rgba(64,128,255,.28);
+    --ep-accent:#A97AFF; --ep-accent-subtle:#2A1E45;
+    --ep-bg-body:#17171A; --ep-bg-surface:#232324; --ep-bg-sunken:#1D1D1F;
+    --ep-bg-hover:#2E2E30; --ep-bg-active:#17294D;
+    --ep-border:#333335; --ep-border-strong:#48484A;
+    --ep-text-1:#F7F8FA; --ep-text-2:#C9CDD4; --ep-text-3:#86909C;
+    --ep-ov-select:#4080FF;
+  }
+}
+
+/* ═══════════ 2. 基础 ═══════════ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:var(--ep-font);font-size:var(--ep-fs-13);line-height:var(--ep-lh-base);
+  color:var(--ep-text-1);background:var(--ep-bg-body);
+  -webkit-font-smoothing:antialiased;
+}
+input,textarea,select,button{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.ep-sprite{display:none}
+.ep-icon{width:16px;height:16px;flex:none;display:block;fill:none;
+  stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ep-icon--14{width:14px;height:14px}
+.ep-icon--12{width:12px;height:12px}
+.ep-icon--18{width:18px;height:18px}
+
+/* ═══════════ 3. 骨架 ═══════════ */
+.ep-app{
+  height:100vh;display:flex;flex-direction:column;gap:10px;padding:10px;overflow:hidden;
+}
+.ep-app.is-left-collapsed{--ep-left-w:0px}
+/* 注意：不能 display:none —— 那会让左栏退出 grid 流，导致画布被挤到 0 宽的第一列 */
+.ep-app.is-left-collapsed .ep-pane--left{
+  visibility:hidden;overflow:hidden;min-width:0;pointer-events:none;
+}
+
+/* 顶栏 */
+.ep-appbar{
+  flex:none;display:flex;align-items:center;gap:var(--ep-sp-3);
+  height:48px;padding:0 var(--ep-sp-4);
+  background:var(--ep-bg-surface);border:1px solid var(--ep-border);
+  border-radius:var(--ep-r-3);box-shadow:var(--ep-sh-1);
+}
+.ep-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.ep-brand__mark{
+  width:28px;height:28px;flex:none;border-radius:var(--ep-r-2);
+  background:linear-gradient(135deg,var(--ep-primary),var(--ep-accent));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:13px;font-weight:600;letter-spacing:.5px;
+}
+.ep-brand__name{font-size:var(--ep-fs-14);font-weight:600;letter-spacing:.2px}
+.ep-brand__sub{font-size:var(--ep-fs-12);color:var(--ep-text-3)}
+.ep-appbar__spacer{flex:1}
+.ep-chip{
+  display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;
+  border-radius:var(--ep-r-full);font-size:var(--ep-fs-11);font-weight:500;
+  background:var(--ep-bg-hover);color:var(--ep-text-2);white-space:nowrap;
+}
+.ep-chip--ok{background:rgba(0,180,42,.10);color:var(--ep-success)}
+.ep-chip--primary{background:var(--ep-primary-subtle);color:var(--ep-primary)}
+.ep-chip--accent{background:var(--ep-accent-subtle);color:var(--ep-accent)}
+.ep-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+
+/* 卡片 */
+.ep-card{
+  background:var(--ep-bg-surface);border:1px solid var(--ep-border);
+  border-radius:var(--ep-r-3);box-shadow:var(--ep-sh-1);display:flex;flex-direction:column;min-height:0;
+}
+.ep-card__head{
+  flex:none;display:flex;align-items:center;gap:var(--ep-sp-2);
+  padding:10px var(--ep-sp-3);border-bottom:1px solid var(--ep-border);min-height:44px;
+}
+.ep-card__title{
+  font-size:var(--ep-fs-14);font-weight:600;margin:0;display:flex;align-items:center;gap:7px;
+}
+.ep-card__title .ep-icon{color:var(--ep-text-3)}
+.ep-card__sub{font-size:var(--ep-fs-11);color:var(--ep-text-3);font-weight:400}
+.ep-card__tools{margin-left:auto;display:flex;align-items:center;gap:6px}
+.ep-card__body{padding:var(--ep-sp-3);overflow:auto;min-height:0}
+.ep-card__body--tight{padding:var(--ep-sp-2) 6px}
+.ep-card__foot{
+  flex:none;padding:8px var(--ep-sp-3);border-top:1px solid var(--ep-border);
+  display:flex;gap:6px;align-items:center;
+}
+
+/* ═══════════ 4. 按钮体系 ═══════════ */
+.ep-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:30px;padding:0 11px;border-radius:var(--ep-r-2);
+  font-size:var(--ep-fs-12);font-weight:500;white-space:nowrap;
+  border:1px solid var(--ep-border);background:var(--ep-bg-surface);color:var(--ep-text-1);
+  transition:background var(--ep-dur) var(--ep-ease),border-color var(--ep-dur) var(--ep-ease),
+             box-shadow var(--ep-dur) var(--ep-ease),transform var(--ep-dur) var(--ep-ease);
+}
+.ep-btn .ep-icon{color:var(--ep-text-2)}
+.ep-btn:hover{background:var(--ep-bg-hover);border-color:var(--ep-border-strong);box-shadow:var(--ep-sh-1)}
+.ep-btn:active{transform:translateY(1px)}
+.ep-btn:focus-visible{outline:2px solid var(--ep-primary-ring);outline-offset:1px}
+.ep-btn--primary{
+  background:var(--ep-primary);border-color:var(--ep-primary);color:#fff;box-shadow:var(--ep-sh-1);
+}
+.ep-btn--primary .ep-icon{color:#fff}
+.ep-btn--primary:hover{background:var(--ep-primary-hover);border-color:var(--ep-primary-hover);box-shadow:var(--ep-sh-2)}
+.ep-btn--ghost{border-color:transparent;background:transparent}
+.ep-btn--ghost:hover{background:var(--ep-bg-hover);border-color:transparent}
+.ep-btn--sm{height:26px;padding:0 9px;font-size:var(--ep-fs-11)}
+.ep-btn--block{width:100%}
+.ep-btn.is-on{background:var(--ep-primary-subtle);border-color:var(--ep-primary);color:var(--ep-primary)}
+.ep-btn.is-on .ep-icon{color:var(--ep-primary)}
+.ep-btn[disabled]{opacity:.4;pointer-events:none}
+.ep-iconbtn{
+  width:30px;height:30px;padding:0;border-radius:var(--ep-r-2);color:var(--ep-text-2);
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;transition:background var(--ep-dur) var(--ep-ease);
+}
+.ep-iconbtn:hover{background:var(--ep-bg-hover);color:var(--ep-text-1)}
+.ep-iconbtn.is-on{background:var(--ep-primary-subtle);color:var(--ep-primary)}
+.ep-iconbtn--xs{width:20px;height:20px;border-radius:var(--ep-r-1)}
+.ep-iconbtn--xs .ep-icon{width:12px;height:12px}
+
+/* 分段控件 */
+.ep-seg{display:inline-flex;padding:2px;gap:2px;background:var(--ep-bg-hover);border-radius:var(--ep-r-2)}
+.ep-seg__btn{
+  height:24px;padding:0 10px;border-radius:6px;font-size:var(--ep-fs-12);font-weight:500;
+  color:var(--ep-text-2);display:inline-flex;align-items:center;gap:5px;
+  transition:background var(--ep-dur) var(--ep-ease),color var(--ep-dur) var(--ep-ease);
+}
+.ep-seg__btn:hover{color:var(--ep-text-1)}
+.ep-seg__btn.is-on{background:var(--ep-bg-surface);color:var(--ep-text-1);box-shadow:var(--ep-sh-1)}
+.ep-seg__btn.is-on .ep-icon{color:var(--ep-primary)}
+
+/* ═══════════ 5. 一级工具栏 + 对齐条 ═══════════ */
+.ep-ribbon{
+  flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:8px var(--ep-sp-3);background:var(--ep-bg-surface);
+  border:1px solid var(--ep-border);border-radius:var(--ep-r-3);box-shadow:var(--ep-sh-1);
+}
+.ep-ribbon__group{display:flex;align-items:center;gap:4px}
+.ep-ribbon__sep{width:1px;height:20px;background:var(--ep-border);margin:0 5px;flex:none}
+.ep-ribbon__spacer{flex:1}
+.ep-ribbon__badge{
+  position:absolute;top:-5px;right:-5px;height:15px;padding:0 5px;border-radius:var(--ep-r-full);
+  background:var(--ep-accent);color:#fff;font-size:9px;font-weight:600;line-height:15px;
+}
+.ep-ribbon__btn--painter{position:relative}
+.ep-ribbon__btn--painter.is-on{background:var(--ep-accent-subtle);border-color:var(--ep-accent);color:var(--ep-accent)}
+.ep-ribbon__btn--painter.is-on .ep-icon{color:var(--ep-accent)}
+.ep-ribbon__btn--painter.is-on .ep-ribbon__badge{display:block}
+.ep-ribbon__badge{display:none}
+
+.ep-alignbar{
+  flex:none;display:flex;align-items:center;gap:var(--ep-sp-2);
+  padding:6px var(--ep-sp-3);background:var(--ep-bg-surface);
+  border:1px solid var(--ep-border);border-radius:var(--ep-r-3);box-shadow:var(--ep-sh-1);
+}
+.ep-alignbar__label{
+  font-size:var(--ep-fs-11);font-weight:600;letter-spacing:.6px;color:var(--ep-text-3);
+  text-transform:uppercase;padding-right:2px;
+}
+.ep-alignbar__fieldset{
+  display:flex;align-items:center;gap:3px;padding:3px;border-radius:var(--ep-r-2);background:var(--ep-bg-sunken);
+}
+.ep-alignbar__hint{margin-left:auto;font-size:var(--ep-fs-11);color:var(--ep-text-3)}
+
+/* ═══════════ 6. 工作区三栏 ═══════════ */
+.ep-workspace{
+  flex:1;min-height:0;display:grid;gap:10px;
+  grid-template-columns:var(--ep-left-w) minmax(0,1fr) var(--ep-right-w);
+}
+.ep-pane{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;padding-right:2px}
+/* 左栏卡片保持自然高度，由 pane 整体滚动——禁止被 flex 压扁（压扁会裁掉卡片内容） */
+.ep-pane--left > .ep-card{flex:none}
+.ep-pane::-webkit-scrollbar{width:8px}
+.ep-pane::-webkit-scrollbar-thumb{background:var(--ep-border-strong);border-radius:4px;
+  border:2px solid var(--ep-bg-body)}
+.ep-pane::-webkit-scrollbar-track{background:transparent}
+
+/* ═══════════ 7. 导入区 / 草稿区 ═══════════ */
+.ep-import__area{
+  width:100%;min-height:44px;resize:vertical;padding:7px 9px;
+  border:1px solid var(--ep-border);border-radius:var(--ep-r-2);background:var(--ep-bg-sunken);
+  font-size:var(--ep-fs-12);line-height:1.6;color:var(--ep-text-1);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  transition:border-color var(--ep-dur) var(--ep-ease),box-shadow var(--ep-dur) var(--ep-ease);
+}
+.ep-import__area::placeholder{color:var(--ep-text-3)}
+.ep-import__area:focus{outline:none;border-color:var(--ep-primary);background:var(--ep-bg-surface);
+  box-shadow:0 0 0 3px var(--ep-primary-ring)}
+.ep-import__actions{display:flex;align-items:center;gap:6px;margin-top:8px}
+.ep-import__tip{font-size:var(--ep-fs-11);color:var(--ep-text-3);margin-left:auto}
+
+.ep-draft__top{display:flex;align-items:center;gap:var(--ep-sp-2)}
+.ep-draft__icon{
+  width:28px;height:28px;flex:none;border-radius:var(--ep-r-2);background:var(--ep-primary-subtle);
+  color:var(--ep-primary);display:flex;align-items:center;justify-content:center;
+}
+.ep-draft__meta{min-width:0;flex:1;display:flex;flex-direction:column}
+.ep-draft__name{font-size:var(--ep-fs-12);font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.ep-draft__time{font-size:var(--ep-fs-11);color:var(--ep-text-3)}
+.ep-draft__acts{display:flex;gap:6px;margin-top:6px}
+.ep-draft__acts .ep-btn{flex:1}
+.ep-draft__empty{
+  display:flex;align-items:center;gap:6px;padding:10px;border:1px dashed var(--ep-border-strong);
+  border-radius:var(--ep-r-2);color:var(--ep-text-3);font-size:var(--ep-fs-12);justify-content:center;
+}
+
+/* ═══════════ 8. 插入面板 / 图层面板 ═══════════ */
+.ep-elements__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ep-elements__item{
+  display:flex;align-items:center;gap:4px;height:26px;padding:0 6px;
+  border:1px solid var(--ep-border);border-radius:var(--ep-r-2);background:var(--ep-bg-surface);
+  font-size:var(--ep-fs-12);color:var(--ep-text-1);text-align:left;white-space:nowrap;overflow:hidden;
+  transition:background var(--ep-dur) var(--ep-ease),border-color var(--ep-dur) var(--ep-ease);
+}
+.ep-elements__item .ep-icon{color:var(--ep-text-3)}
+.ep-elements__item:hover{background:var(--ep-bg-active);border-color:var(--ep-primary)}
+.ep-elements__item:hover .ep-icon{color:var(--ep-primary)}
+.ep-elements__list{display:flex;gap:6px;margin-top:6px}
+
+.ep-layers__row{
+  display:flex;align-items:center;gap:4px;height:26px;padding-right:4px;
+  border-radius:var(--ep-r-1);font-size:var(--ep-fs-12);color:var(--ep-text-2);cursor:pointer;
+}
+.ep-layers__row:hover{background:var(--ep-bg-hover)}
+.ep-layers__row.is-selected{background:var(--ep-primary-subtle);color:var(--ep-primary);font-weight:600}
+.ep-layers__row.is-child-hidden{opacity:.45}
+.ep-layers__toggle{
+  width:14px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--ep-text-3)
+}
+.ep-layers__name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-layers__ops{display:none;align-items:center;gap:1px;flex:none}
+.ep-layers__row:hover .ep-layers__ops,
+.ep-layers__row.is-selected .ep-layers__ops{display:flex}
+.ep-layers__row.is-child-hidden .ep-layers__ops{display:none}
+.ep-layers__more{
+  font-size:var(--ep-fs-11);color:var(--ep-text-3);padding:5px 4px;border-radius:var(--ep-r-1);cursor:pointer;
+}
+.ep-layers__more:hover{background:var(--ep-bg-hover);color:var(--ep-primary)}
+
+/* ═══════════ 9. 画布 + 覆盖层 ═══════════ */
+.ep-canvas{flex:1;min-height:0}
+.ep-canvas__stage{
+  position:relative;flex:1;min-height:0;overflow:auto;background-color:var(--ep-bg-sunken);
+  background-image:radial-gradient(circle,rgba(29,33,41,.07) 1px,transparent 1px);
+  background-size:16px 16px;
+  display:flex;align-items:flex-start;justify-content:center;padding:var(--ep-sp-6) var(--ep-sp-5);
+}
+html[data-ep-theme="dark"] .ep-canvas__stage{
+  background-image:radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px);
+}
+.ep-canvas__viewport{position:relative;width:720px;max-width:100%;flex:none}
+
+.ep-paper{
+  width:100%;background:#fff;border-radius:var(--ep-r-3);box-shadow:var(--ep-sh-3);
+  overflow:hidden;position:relative;
+}
+.ep-overlay{position:absolute;inset:0;pointer-events:none;z-index:10}
+
+.ep-hover{
+  position:absolute;display:none;pointer-events:none;z-index:10;
+  border:1px solid var(--ep-ov-hover-border);background:var(--ep-ov-hover-bg);
+  border-radius:2px;
+}
+.ep-sel{
+  position:absolute;display:none;pointer-events:none;z-index:20;
+  border:2px solid var(--ep-ov-select);border-radius:2px;
+}
+.ep-sel--multi{border-width:2px;border-style:dashed;opacity:.75}
+.ep-sel__label{
+  position:absolute;top:-21px;left:-2px;height:18px;padding:0 7px;border-radius:var(--ep-r-1) var(--ep-r-1) var(--ep-r-1) 0;
+  background:var(--ep-ov-select);color:#fff;font-size:var(--ep-fs-11);font-weight:500;
+  display:flex;align-items:center;white-space:nowrap;letter-spacing:.2px;
+  box-shadow:var(--ep-sh-1);
+}
+.ep-handle{
+  position:absolute;width:10px;height:10px;display:none;z-index:30;
+  background:var(--ep-ov-handle);border:2px solid var(--ep-ov-select);border-radius:2px;
+  pointer-events:auto;
+}
+.ep-handle:hover{background:var(--ep-primary-subtle);transform:scale(1.15)}
+.ep-lock{
+  position:absolute;display:none;z-index:35;width:18px;height:18px;border-radius:var(--ep-r-1);
+  background:var(--ep-ov-lock);border:1px solid var(--ep-border-strong);color:var(--ep-warning);
+  align-items:center;justify-content:center;font-size:10px;
+}
+.ep-edittag{
+  position:absolute;display:none;z-index:36;top:-21px;right:-2px;height:18px;padding:0 7px;
+  border-radius:var(--ep-r-1);background:var(--ep-accent);color:#fff;
+  font-size:var(--ep-fs-11);font-weight:500;align-items:center;gap:4px;
+}
+.ep-edittag.is-on{display:flex}
+
+/* 被编辑页面（模拟"用户内容"，用自身字面量颜色，不随主题变） */
+.ep-page{color:#1f2329;font-family:var(--ep-font)}
+.ep-page__nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;border-bottom:1px solid #eef0f3;background:#fff;
+}
+.ep-page__brand{font-size:15px;font-weight:700;letter-spacing:.4px;color:#165DFF}
+.ep-page__navlink{font-size:13px;color:#6b7280;margin-left:18px}
+.ep-page__hero{padding:36px 32px 28px;background:linear-gradient(180deg,#f7f9ff,#fff)}
+.ep-page__title{margin:0 0 12px;font-size:34px;line-height:1.28;font-weight:700;letter-spacing:-.4px;color:#12325e}
+.ep-page__sub{margin:0 0 22px;font-size:15px;line-height:1.75;color:#5b6472;max-width:520px}
+.ep-page__cta{display:flex;align-items:center;gap:16px}
+.ep-page__btn{
+  display:inline-block;padding:11px 22px;border-radius:8px;background:#165DFF;color:#fff;
+  font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 4px 12px rgba(22,93,255,.28);
+}
+.ep-page__link{font-size:13px;color:#722ED1;font-weight:600}
+.ep-page__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:24px 32px 32px}
+.ep-page__card{border:1px solid #eef0f3;border-radius:10px;padding:14px;background:#fcfcfd}
+.ep-page__cardh{margin:0 0 6px;font-size:14px;font-weight:600;color:#1f2329}
+.ep-page__cardp{margin:0;font-size:12px;line-height:1.7;color:#6b7280}
+.ep-page [data-ep-label]{transition:outline-color .12s linear}
+.ep-page .is-editing{
+  outline:1.5px dashed var(--ep-accent);outline-offset:2px;background:var(--ep-accent-subtle);
+  caret-color:var(--ep-accent);
+}
+.ep-page .is-locked{filter:saturate(.6)}
+
+/* ═══════════ 10. 预览态 ═══════════ */
+.ep-preview__chrome{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;
+  border-bottom:1px solid var(--ep-border);background:var(--ep-bg-sunken);
+}
+.ep-preview__dots{display:flex;gap:5px}
+.ep-preview__dots i{width:9px;height:9px;border-radius:50%;background:var(--ep-border-strong);display:block}
+.ep-preview__addr{
+  flex:1;max-width:340px;height:24px;border-radius:var(--ep-r-full);background:var(--ep-bg-surface);
+  border:1px solid var(--ep-border);display:flex;align-items:center;gap:6px;padding:0 10px;
+  font-size:var(--ep-fs-11);color:var(--ep-text-3);
+}
+.ep-preview__stage{
+  flex:1;min-height:0;overflow:auto;padding:var(--ep-sp-5);
+  display:flex;justify-content:center;align-items:flex-start;background:var(--ep-bg-body);
+}
+.ep-preview__stage .ep-paper{box-shadow:var(--ep-sh-2);border:1px solid var(--ep-border);
+  max-width:900px;flex:none}
+.ep-preview__stage .ep-page{border-radius:var(--ep-r-3);overflow:hidden}
+.is-hidden{display:none !important}
+
+/* ═══════════ 11. 样式面板 ═══════════ */
+.ep-style__state{
+  display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:var(--ep-r-2);
+  font-size:var(--ep-fs-12);margin-bottom:var(--ep-sp-3);
+}
+.ep-style__state--empty{background:var(--ep-bg-hover);color:var(--ep-text-2)}
+.ep-style__state--block{background:rgba(255,125,0,.10);color:#B85C00;border:1px solid rgba(255,125,0,.28)}
+.ep-style__state--mixed{background:var(--ep-accent-subtle);color:var(--ep-accent);border:1px solid rgba(114,46,209,.24)}
+.ep-style__group{border-top:1px solid var(--ep-border);margin-top:var(--ep-sp-3);padding-top:var(--ep-sp-3)}
+.ep-style__group:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.ep-style__grouph{
+  font-size:var(--ep-fs-11);font-weight:600;letter-spacing:.5px;color:var(--ep-text-3);
+  margin:0 0 8px;text-transform:uppercase;
+}
+.ep-field{display:flex;align-items:center;gap:var(--ep-sp-2);margin-bottom:8px}
+.ep-field__label{
+  width:64px;flex:none;font-size:var(--ep-fs-12);color:var(--ep-text-2);text-align:right;
+}
+.ep-field__ctrl{flex:1;min-width:0;display:flex;gap:6px}
+.ep-input,.ep-fake-select{
+  flex:1;min-width:0;height:30px;padding:0 9px;border:1px solid var(--ep-border);
+  border-radius:var(--ep-r-2);background:var(--ep-bg-surface);font-size:var(--ep-fs-12);
+  display:flex;align-items:center;justify-content:space-between;gap:6px;color:var(--ep-text-1);
+}
+.ep-input:focus{outline:none;border-color:var(--ep-primary);box-shadow:0 0 0 3px var(--ep-primary-ring)}
+.ep-fake-select{cursor:pointer;color:var(--ep-text-1)}
+.ep-fake-select:hover{border-color:var(--ep-primary)}
+.ep-fake-select .ep-icon{color:var(--ep-text-3)}
+.ep-input--num{flex:none;width:74px}
+.ep-input--mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.ep-color{flex:1;display:flex;align-items:center;gap:7px;height:30px;padding:0 8px;
+  border:1px solid var(--ep-border);border-radius:var(--ep-r-2);background:var(--ep-bg-surface)}
+.ep-color__sw{
+  width:18px;height:18px;flex:none;border-radius:var(--ep-r-1);border:1px solid var(--ep-border-strong);
+}
+.ep-color__hex{font-size:var(--ep-fs-12);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--ep-text-1)}
+.ep-color__none{margin-left:auto;font-size:var(--ep-fs-11);color:var(--ep-text-3)}
+.ep-mini-seg{display:flex;gap:3px;flex:1}
+.ep-mini-seg__btn{
+  flex:1;height:30px;border:1px solid var(--ep-border);border-radius:var(--ep-r-2);
+  display:flex;align-items:center;justify-content:center;color:var(--ep-text-2);background:var(--ep-bg-surface);
+}
+.ep-mini-seg__btn:hover{background:var(--ep-bg-hover)}
+.ep-mini-seg__btn.is-on{background:var(--ep-primary-subtle);border-color:var(--ep-primary);color:var(--ep-primary)}
+.ep-pill-mixed{
+  height:22px;padding:0 8px;border-radius:var(--ep-r-full);background:var(--ep-accent-subtle);
+  color:var(--ep-accent);font-size:var(--ep-fs-11);font-weight:500;display:inline-flex;align-items:center;
+}
+.ep-link-row{display:flex;gap:6px}
+.ep-style.is-empty .ep-field,
+.ep-style.is-empty .ep-style__group{opacity:.45;pointer-events:none}
+.ep-style.is-block .ep-field,
+.ep-style.is-block .ep-style__group{opacity:.35;pointer-events:none}
+
+/* ═══════════ 12. 底部面包屑 ═══════════ */
+.ep-statusbar{
+  flex:none;display:flex;align-items:center;gap:var(--ep-sp-3);height:34px;
+  padding:0 var(--ep-sp-3);background:var(--ep-bg-surface);border:1px solid var(--ep-border);
+  border-radius:var(--ep-r-2);box-shadow:var(--ep-sh-1);font-size:var(--ep-fs-12);
+}
+.ep-statusbar__label{color:var(--ep-text-3);font-size:var(--ep-fs-11);flex:none}
+.ep-crumb{display:flex;align-items:center;gap:2px;overflow:hidden}
+.ep-crumb__item{
+  padding:2px 7px;border-radius:var(--ep-r-1);color:var(--ep-text-2);cursor:pointer;white-space:nowrap;
+}
+.ep-crumb__item:hover{background:var(--ep-bg-hover);color:var(--ep-primary)}
+.ep-crumb__item.is-current{background:var(--ep-primary-subtle);color:var(--ep-primary);font-weight:600}
+.ep-crumb__sep{color:var(--ep-text-3);font-size:10px;flex:none}
+.ep-statusbar__spacer{flex:1}
+.ep-statusbar__stat{color:var(--ep-text-3);font-size:var(--ep-fs-11);display:flex;align-items:center;gap:5px}
+
+/* ═══════════ 13. toast / 右键菜单 ═══════════ */
+.ep-toast{
+  position:fixed;left:50%;bottom:56px;transform:translate(-50%,14px);
+  display:flex;align-items:center;gap:9px;max-width:min(560px,90vw);
+  padding:11px var(--ep-sp-4);border-radius:var(--ep-r-3);
+  background:var(--ep-bg-surface);border:1px solid var(--ep-border);box-shadow:var(--ep-sh-4);
+  font-size:var(--ep-fs-13);color:var(--ep-text-1);
+  opacity:0;pointer-events:none;transition:opacity var(--ep-dur) var(--ep-ease),transform var(--ep-dur) var(--ep-ease);
+  z-index:900;
+}
+.ep-toast.is-on{opacity:1;transform:translate(-50%,0)}
+.ep-toast__ico{
+  width:22px;height:22px;flex:none;border-radius:50%;background:var(--ep-primary-subtle);
+  color:var(--ep-primary);display:flex;align-items:center;justify-content:center;
+}
+.ep-toast__text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.ep-menu{
+  position:fixed;z-index:950;min-width:172px;padding:6px;
+  background:var(--ep-bg-surface);border:1px solid var(--ep-border);border-radius:var(--ep-r-3);
+  box-shadow:var(--ep-sh-4);display:none;
+}
+.ep-menu.is-on{display:block}
+.ep-menu__item{
+  display:flex;align-items:center;gap:9px;width:100%;height:30px;padding:0 9px;
+  border-radius:var(--ep-r-2);font-size:var(--ep-fs-12);color:var(--ep-text-1);text-align:left;
+}
+.ep-menu__item .ep-icon{color:var(--ep-text-3)}
+.ep-menu__item:hover{background:var(--ep-bg-active);color:var(--ep-primary)}
+.ep-menu__item:hover .ep-icon{color:var(--ep-primary)}
+.ep-menu__item--danger:hover{background:rgba(245,63,63,.10);color:var(--ep-danger)}
+.ep-menu__item--danger:hover .ep-icon{color:var(--ep-danger)}
+.ep-menu__sep{height:1px;background:var(--ep-border);margin:5px 4px}
+.ep-menu__kbd{margin-left:auto;font-size:var(--ep-fs-11);color:var(--ep-text-3)}
+
+/* ═══════════ 14. 响应式（1280 不横向溢出） ═══════════ */
+@media (max-width:1366px){
+  :root{--ep-left-w:240px;--ep-right-w:292px}
+  .ep-canvas__viewport{width:640px}
+  .ep-page__title{font-size:30px}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ 内联 SVG 图标精灵（零外链） ════════ -->
+<svg class="ep-sprite" aria-hidden="true">
+  <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-blank" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12.5v5M9.5 15h5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A10 10 0 0 1 12 6c6.4 0 10 6 10 6a17.6 17.6 0 0 1-3.3 3.9M6.3 6.5A17.5 17.5 0 0 0 2 12s3.6 6 10 6a10 10 0 0 0 3.3-.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3"/><path d="M3 4.5V9h4.5"/></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24"><path d="M9 14.5 4.6 18.9a2.1 2.1 0 1 0 3 3L12 17.5"/><path d="M14.2 11.8 20.6 5.4a1.9 1.9 0 0 0-2.7-2.7L11.5 9.1"/><path d="m11.5 9.1 3.4 3.4"/></symbol>
+  <symbol id="i-al-left" viewBox="0 0 24 24"><path d="M4 3v18"/><rect x="8" y="6" width="12" height="4" rx="1"/><rect x="8" y="14" width="8" height="4" rx="1"/></symbol>
+  <symbol id="i-al-right" viewBox="0 0 24 24"><path d="M20 3v18"/><rect x="4" y="6" width="12" height="4" rx="1"/><rect x="8" y="14" width="8" height="4" rx="1"/></symbol>
+  <symbol id="i-al-hcenter" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="5" y="6" width="14" height="4" rx="1"/><rect x="8" y="14" width="8" height="4" rx="1"/></symbol>
+  <symbol id="i-al-top" viewBox="0 0 24 24"><path d="M3 4h18"/><rect x="6" y="8" width="4" height="12" rx="1"/><rect x="14" y="8" width="4" height="8" rx="1"/></symbol>
+  <symbol id="i-al-bottom" viewBox="0 0 24 24"><path d="M3 20h18"/><rect x="6" y="4" width="4" height="12" rx="1"/><rect x="14" y="8" width="4" height="8" rx="1"/></symbol>
+  <symbol id="i-al-vcenter" viewBox="0 0 24 24"><path d="M3 12h18"/><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="8" width="4" height="8" rx="1"/></symbol>
+  <symbol id="i-al-hdist" viewBox="0 0 24 24"><rect x="3" y="6" width="5" height="12" rx="1"/><rect x="16" y="6" width="5" height="12" rx="1"/><path d="M9 12h6"/></symbol>
+  <symbol id="i-al-vdist" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="5" rx="1"/><rect x="6" y="16" width="12" height="5" rx="1"/><path d="M12 9v6"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></symbol>
+  <symbol id="i-above" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="3" rx="1.5"/><rect x="7.5" y="9" width="9" height="12" rx="1.5"/></symbol>
+  <symbol id="i-below" viewBox="0 0 24 24"><rect x="4" y="18" width="16" height="3" rx="1.5"/><rect x="7.5" y="3" width="9" height="12" rx="1.5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V5"/><path d="m6 11 6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v15"/><path d="m6 13 6 6 6-6"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6V4h14v2"/><path d="M12 4v16"/><path d="M9 20h6"/></symbol>
+  <symbol id="i-h1" viewBox="0 0 24 24"><path d="M5 5v14M13 5v14M5 12h8"/><path d="M17 9.5 19 8v11"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 17 4.6-4.6 3.9 3.9L15 14l5 5"/></symbol>
+  <symbol id="i-button" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4"/><path d="M9 12h6"/></symbol>
+  <symbol id="i-container" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></symbol>
+  <symbol id="i-divider" viewBox="0 0 24 24"><path d="M4 12h16"/><circle cx="5.5" cy="6.5" r="1.2"/><circle cx="12" cy="6.5" r="1.2"/><circle cx="18.5" cy="6.5" r="1.2"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9M15 10v9"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9.5 7V5.4c0-.5.4-.9.9-.9h3.2c.5 0 .9.4.9.9V7"/><path d="m6.5 7 .9 12.2c0 .5.4.8.9.8h7.4c.5 0 .9-.3.9-.8L17.5 7"/></symbol>
+  <symbol id="i-list-ul" viewBox="0 0 24 24"><path d="M8.5 6h12M8.5 12h12M8.5 18h12"/><circle cx="4.5" cy="6" r="1.1"/><circle cx="4.5" cy="12" r="1.1"/><circle cx="4.5" cy="18" r="1.1"/></symbol>
+  <symbol id="i-list-ol" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 4.8 5 4.3V8"/><path d="M3.6 10.6h1.6l-1.7 2.6h1.9"/><path d="M3.6 15.7h1.6a.8.8 0 0 1 0 1.6H4.5v1.6h1.7"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.2 13.4a4 4 0 0 0 5.6.4l2.7-2.7a4 4 0 0 0-5.6-5.6l-1.4 1.3"/><path d="M13.8 10.6a4 4 0 0 0-5.6-.4l-2.7 2.7a4 4 0 0 0 5.6 5.6l1.3-1.3"/></symbol>
+  <symbol id="i-align-left-t" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></symbol>
+  <symbol id="i-align-center-t" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M5.5 18h13"/></symbol>
+  <symbol id="i-align-right-t" viewBox="0 0 24 24"><path d="M4 6h16M10 12h10M7 18h13"/></symbol>
+  <symbol id="i-align-justify-t" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9.5 4v16"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8v.4"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.3 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 4.3a1.6 1.6 0 0 0-2.7 0Z"/><path d="M12 9.5v4M12 17h.01"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></symbol>
+</svg>
+
+<div class="ep-app" id="ep-app">
+
+  <!-- ════════ 顶栏（品牌 / 文档状态 / 主题切换） ════════ -->
+  <div class="ep-appbar">
+    <div class="ep-brand">
+      <span class="ep-brand__mark">易</span>
+      <span class="ep-brand__name">易页 EasyPage</span>
+      <span class="ep-brand__sub">单文件 HTML 精修编辑器</span>
+    </div>
+    <div class="ep-appbar__spacer"></div>
+    <span class="ep-chip"><svg class="ep-icon ep-icon--12"><use href="#i-doc"/></svg>春季活动页.html</span>
+    <span class="ep-chip ep-chip--ok"><i class="ep-dot"></i>已保存</span>
+    <span class="ep-chip ep-chip--accent">草稿自动保存</span>
+    <button class="ep-iconbtn" id="ep-theme-btn" type="button" title="切换深浅模式" aria-label="切换深浅模式">
+      <svg class="ep-icon ep-icon--18" id="ep-theme-ico"><use href="#i-moon"/></svg>
+    </button>
+  </div>
+
+  <!-- ════════ 区块 1：一级工具栏 ════════ -->
+  <div class="ep-ribbon">
+    <div class="ep-ribbon__group">
+      <button class="ep-btn ep-btn--primary" type="button" data-act="import">
+        <svg class="ep-icon"><use href="#i-import"/></svg>导入 HTML
+      </button>
+      <button class="ep-btn" type="button" data-act="blank">
+        <svg class="ep-icon"><use href="#i-blank"/></svg>新建空白
+      </button>
+    </div>
+    <span class="ep-ribbon__sep"></span>
+    <div class="ep-ribbon__group">
+      <button class="ep-btn" type="button" data-act="preview">
+        <svg class="ep-icon"><use href="#i-eye"/></svg>预览
+      </button>
+      <button class="ep-btn" type="button" data-act="export">
+        <svg class="ep-icon"><use href="#i-export"/></svg>导出 HTML
+      </button>
+      <button class="ep-btn" type="button" data-act="copy">
+        <svg class="ep-icon"><use href="#i-copy"/></svg>复制 HTML
+      </button>
+    </div>
+    <span class="ep-ribbon__sep"></span>
+    <div class="ep-ribbon__group">
+      <button class="ep-btn" type="button" data-act="reset">
+        <svg class="ep-icon"><use href="#i-reset"/></svg>重置位移
+      </button>
+      <button class="ep-btn ep-ribbon__btn--painter" type="button" id="ep-painter">
+        <svg class="ep-icon"><use href="#i-brush"/></svg>格式刷
+        <span class="ep-ribbon__badge">连续</span>
+      </button>
+    </div>
+    <div class="ep-ribbon__spacer"></div>
+    <span class="ep-chip ep-chip--primary"><svg class="ep-icon ep-icon--12"><use href="#i-info"/></svg>双击「格式刷」= 连续刷</span>
+    <button class="ep-btn ep-btn--ghost" type="button" id="ep-collapse-btn">
+      <svg class="ep-icon" id="ep-collapse-ico"><use href="#i-panel-left"/></svg>收起左栏
+    </button>
+  </div>
+
+  <!-- ════════ 区块 2：对齐 / 分布条 ════════ -->
+  <div class="ep-alignbar">
+    <span class="ep-alignbar__label">对齐</span>
+    <div class="ep-alignbar__fieldset">
+      <button class="ep-iconbtn" type="button" data-align="left" title="左"><svg class="ep-icon"><use href="#i-al-left"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="hcenter" title="居中"><svg class="ep-icon"><use href="#i-al-hcenter"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="right" title="右"><svg class="ep-icon"><use href="#i-al-right"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="top" title="顶"><svg class="ep-icon"><use href="#i-al-top"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="vcenter" title="垂直居中"><svg class="ep-icon"><use href="#i-al-vcenter"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="bottom" title="底"><svg class="ep-icon"><use href="#i-al-bottom"/></svg></button>
+    </div>
+    <span class="ep-alignbar__label">分布</span>
+    <div class="ep-alignbar__fieldset">
+      <button class="ep-iconbtn" type="button" data-align="hdistribute" title="水平等距"><svg class="ep-icon"><use href="#i-al-hdist"/></svg></button>
+      <button class="ep-iconbtn" type="button" data-align="vdistribute" title="垂直等距"><svg class="ep-icon"><use href="#i-al-vdist"/></svg></button>
+    </div>
+    <span class="ep-alignbar__hint">对齐需要选中 2 个以上元素；等距分布需要 3 个以上</span>
+  </div>
+
+  <!-- ════════ 工作区三栏 ════════ -->
+  <div class="ep-workspace">
+
+    <!-- ─── 左栏 ─── -->
+    <div class="ep-pane ep-pane--left">
+
+      <!-- 区块 3：导入区 -->
+      <section class="ep-card">
+        <div class="ep-card__head">
+          <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-import"/></svg>导入</h2>
+          <div class="ep-card__tools"><span class="ep-chip">.html</span></div>
+        </div>
+        <div class="ep-card__body">
+          <textarea class="ep-import__area" id="ep-import-area" placeholder="在此粘贴 HTML…" spellcheck="false">&lt;section class="hero"&gt;
+  &lt;h1&gt;秋季新品发布会&lt;/h1&gt;
+&lt;/section&gt;</textarea>
+          <div class="ep-import__actions">
+            <button class="ep-btn ep-btn--sm" type="button" data-act="choose-file">
+              <svg class="ep-icon ep-icon--14"><use href="#i-file"/></svg>选择文件
+            </button>
+            <span class="ep-import__tip">纯本地解析，不上传</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 区块 4：草稿区 -->
+      <section class="ep-card">
+        <div class="ep-card__head">
+          <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-reset"/></svg>草稿</h2>
+          <div class="ep-card__tools"><span class="ep-chip">本地存储</span></div>
+        </div>
+        <div class="ep-card__body">
+          <!-- 有草稿态 -->
+          <div id="ep-draft-has">
+            <div class="ep-draft__top">
+              <span class="ep-draft__icon"><svg class="ep-icon ep-icon--14"><use href="#i-doc"/></svg></span>
+              <span class="ep-draft__meta">
+                <span class="ep-draft__name">最近草稿：春季活动页</span>
+                <span class="ep-draft__time">2026-09-21 14:30 · 12.4 KB</span>
+              </span>
+            </div>
+            <div class="ep-draft__acts">
+              <button class="ep-btn ep-btn--sm ep-btn--primary" type="button" data-act="resume">继续</button>
+              <button class="ep-btn ep-btn--sm" type="button" data-act="draft-delete">删除</button>
+            </div>
+          </div>
+          <!-- 无草稿态（点击「删除」可切换到该态） -->
+          <div class="ep-draft__empty is-hidden" id="ep-draft-none">
+            <svg class="ep-icon ep-icon--14"><use href="#i-info"/></svg>无草稿
+          </div>
+        </div>
+      </section>
+
+      <!-- 区块 5：左侧「插入」面板 -->
+      <section class="ep-card">
+        <div class="ep-card__head">
+          <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-container"/></svg>插入</h2>
+          <div class="ep-card__tools"><span class="ep-chip ep-chip--primary">元素</span></div>
+        </div>
+        <div class="ep-card__body ep-card__body--tight">
+          <div class="ep-elements__grid">
+            <button class="ep-elements__item" type="button" data-insert="text"><svg class="ep-icon ep-icon--14"><use href="#i-text"/></svg>文本</button>
+            <button class="ep-elements__item" type="button" data-insert="h1"><svg class="ep-icon ep-icon--14"><use href="#i-h1"/></svg>标题</button>
+            <button class="ep-elements__item" type="button" data-insert="img"><svg class="ep-icon ep-icon--14"><use href="#i-image"/></svg>图片</button>
+            <button class="ep-elements__item" type="button" data-insert="button"><svg class="ep-icon ep-icon--14"><use href="#i-button"/></svg>按钮</button>
+            <button class="ep-elements__item" type="button" data-insert="div"><svg class="ep-icon ep-icon--14"><use href="#i-container"/></svg>容器</button>
+            <button class="ep-elements__item" type="button" data-insert="hr"><svg class="ep-icon ep-icon--14"><use href="#i-divider"/></svg>分割线</button>
+            <button class="ep-elements__item" type="button" data-insert="section"><svg class="ep-icon ep-icon--14"><use href="#i-doc"/></svg>区块</button>
+            <button class="ep-elements__item" type="button" data-insert="table"><svg class="ep-icon ep-icon--14"><use href="#i-table"/></svg>表格</button>
+          </div>
+          <div class="ep-elements__list">
+            <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="to-list-ul">
+              <svg class="ep-icon ep-icon--14"><use href="#i-list-ul"/></svg>项目符号列表
+            </button>
+            <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="to-list-ol">
+              <svg class="ep-icon ep-icon--14"><use href="#i-list-ol"/></svg>编号列表
+            </button>
+          </div>
+        </div>
+        <div class="ep-card__foot">
+          <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="delete-sel" style="color:var(--ep-danger)">
+            <svg class="ep-icon ep-icon--14"><use href="#i-trash"/></svg>删除选中
+          </button>
+        </div>
+      </section>
+
+      <!-- 区块 6：左侧「图层」面板 -->
+      <section class="ep-card">
+        <div class="ep-card__head">
+          <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-list-ul"/></svg>图层</h2>
+          <div class="ep-card__tools"><span class="ep-chip ep-chip--accent">树形</span></div>
+        </div>
+        <div class="ep-card__body ep-card__body--tight">
+          <div id="ep-layer-list">
+            <div class="ep-layers__row" data-depth="0" data-target="body">
+              <span class="ep-layers__toggle" data-toggle="1"><svg class="ep-icon ep-icon--12"><use href="#i-chev-down"/></svg></span>
+              <span class="ep-layers__name">body</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__row" data-depth="1" data-target="section.hero">
+              <span class="ep-layers__toggle" data-toggle="1"><svg class="ep-icon ep-icon--12"><use href="#i-chev-down"/></svg></span>
+              <span class="ep-layers__name">section.hero</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__row" data-depth="2" data-target="h1.title">
+              <span class="ep-layers__toggle">·</span>
+              <span class="ep-layers__name">h1.title</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__row" data-depth="2" data-target="p.subtitle">
+              <span class="ep-layers__toggle">·</span>
+              <span class="ep-layers__name">p.subtitle</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__row" data-depth="2" data-target="a.button">
+              <span class="ep-layers__toggle">·</span>
+              <span class="ep-layers__name">a.button</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__row" data-depth="1" data-target="section.grid">
+              <span class="ep-layers__toggle" data-toggle="1"><svg class="ep-icon ep-icon--12"><use href="#i-chev-down"/></svg></span>
+              <span class="ep-layers__name">section.grid</span>
+              <span class="ep-layers__ops">
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置顶"><svg class="ep-icon"><use href="#i-above"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="上移"><svg class="ep-icon"><use href="#i-up"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="下移"><svg class="ep-icon"><use href="#i-down"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" type="button" title="置底"><svg class="ep-icon"><use href="#i-below"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="lock" type="button" title="锁定"><svg class="ep-icon"><use href="#i-unlock"/></svg></button>
+                <button class="ep-iconbtn ep-iconbtn--xs" data-op="hide" type="button" title="隐藏"><svg class="ep-icon"><use href="#i-eye"/></svg></button>
+              </span>
+            </div>
+            <div class="ep-layers__more" data-more="12">… 显示更多 12 个</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ─── 中间：画布 / 预览 ─── -->
+    <section class="ep-card ep-canvas" id="ep-canvas-card">
+      <div class="ep-card__head">
+        <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-image"/></svg>画布</h2>
+        <span class="ep-card__sub">720 × 自适应 · 单页</span>
+        <div class="ep-card__tools">
+          <!-- 区块 9 的入口 -->
+          <div class="ep-seg" id="ep-mode-seg">
+            <button class="ep-seg__btn is-on" type="button" data-mode="edit">
+              <svg class="ep-icon ep-icon--14"><use href="#i-move"/></svg>编辑
+            </button>
+            <button class="ep-seg__btn" type="button" data-mode="preview">
+              <svg class="ep-icon ep-icon--14"><use href="#i-eye"/></svg>预览
+            </button>
+          </div>
+          <span class="ep-chip">100%</span>
+        </div>
+      </div>
+      <div class="ep-canvas__stage" id="ep-stage">
+        <div class="ep-canvas__viewport" id="ep-viewport">
+          <!-- 区块 7：被编辑页面（白纸感） -->
+          <div class="ep-paper ep-page" id="ep-paper">
+            <header class="ep-page__nav" data-ep-label="header.nav">
+              <span class="ep-page__brand" data-ep-label="span.brand">NOVA · 秋季新品发布会</span>
+              <span>
+                <span class="ep-page__navlink" data-ep-label="span.nav-1">议程</span>
+                <span class="ep-page__navlink" data-ep-label="span.nav-2">嘉宾</span>
+              </span>
+            </header>
+            <section class="ep-page__hero" data-ep-label="section.hero" data-ep-cap="block">
+              <h1 class="ep-page__title" data-ep-label="h1.title">让每一份活动页，都可以直接上线</h1>
+              <p class="ep-page__sub" data-ep-label="p.subtitle">粘贴一份 HTML，在画布里直接改字、调样式、拖拽对齐，最后导出不带任何编辑器痕迹的干净代码。</p>
+              <div class="ep-page__cta">
+                <a class="ep-page__btn" href="#" data-ep-label="a.button">立即报名</a>
+                <span class="ep-page__link" data-ep-label="span.link">查看往期回顾</span>
+              </div>
+            </section>
+            <section class="ep-page__grid" data-ep-label="section.grid" data-ep-cap="block">
+              <div class="ep-page__card" data-ep-label="div.card-1">
+                <h3 class="ep-page__cardh" data-ep-label="h3.card-1">10 月 18 日</h3>
+                <p class="ep-page__cardp" data-ep-label="p.card-1">深圳 · 会展中心 3 号馆</p>
+              </div>
+              <div class="ep-page__card" data-ep-label="div.card-2">
+                <h3 class="ep-page__cardh" data-ep-label="h3.card-2">6 位主讲</h3>
+                <p class="ep-page__cardp" data-ep-label="p.card-2">产品 / 增长 / 品牌三个专场</p>
+              </div>
+              <div class="ep-page__card" data-ep-label="div.card-3">
+                <h3 class="ep-page__cardh" data-ep-label="h3.card-3">限量 300 席</h3>
+                <p class="ep-page__cardp" data-ep-label="p.card-3">报名后发送入场凭证</p>
+              </div>
+            </section>
+          </div>
+
+          <!-- 覆盖层：hover / 选中框 / 8 手柄 / 锁定徽标 / 编辑中标签 -->
+          <div class="ep-overlay" id="ep-overlay">
+            <div class="ep-hover" id="ep-hover"></div>
+            <div class="ep-sel" id="ep-selected"><span class="ep-sel__label" id="ep-sel-label">h1.title</span></div>
+            <div class="ep-handle" data-dir="n"></div>
+            <div class="ep-handle" data-dir="s"></div>
+            <div class="ep-handle" data-dir="e"></div>
+            <div class="ep-handle" data-dir="w"></div>
+            <div class="ep-handle" data-dir="ne"></div>
+            <div class="ep-handle" data-dir="nw"></div>
+            <div class="ep-handle" data-dir="se"></div>
+            <div class="ep-handle" data-dir="sw"></div>
+            <div class="ep-lock" id="ep-lock"><svg class="ep-icon ep-icon--12"><use href="#i-lock"/></svg></div>
+            <div class="ep-edittag" id="ep-edittag">
+              <svg class="ep-icon ep-icon--12"><use href="#i-text"/></svg>编辑中
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── 预览态（区块 9） ─── -->
+    <section class="ep-card ep-canvas is-hidden" id="ep-preview-card">
+      <div class="ep-card__head">
+        <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-eye"/></svg>预览</h2>
+        <span class="ep-card__sub">沙箱运行，脚本可执行</span>
+        <div class="ep-card__tools">
+          <span class="ep-chip ep-chip--ok"><i class="ep-dot"></i>脚本可运行</span>
+          <button class="ep-btn ep-btn--sm" type="button" data-act="back-edit">
+            <svg class="ep-icon ep-icon--14"><use href="#i-reset"/></svg>返回编辑
+          </button>
+        </div>
+      </div>
+      <div class="ep-preview__chrome">
+        <span class="ep-preview__dots"><i></i><i></i><i></i></span>
+        <span class="ep-preview__addr"><svg class="ep-icon ep-icon--12"><use href="#i-lock"/></svg>本地预览 · 沙箱 iframe</span>
+        <span class="ep-chip">无外链请求</span>
+      </div>
+      <div class="ep-preview__stage" id="ep-preview-stage"></div>
+    </section>
+
+    <!-- ─── 右栏：区块 8 样式面板 ─── -->
+    <aside class="ep-pane">
+      <section class="ep-card ep-style is-empty" id="ep-style" style="flex:1">
+        <div class="ep-card__head">
+          <h2 class="ep-card__title"><svg class="ep-icon"><use href="#i-brush"/></svg>样式</h2>
+          <div class="ep-card__tools">
+            <span class="ep-chip" id="ep-style-target">未选中</span>
+          </div>
+        </div>
+        <div class="ep-card__body">
+
+          <!-- 空态 / 不可编辑提示态 / 多选混合态 -->
+          <div class="ep-style__state ep-style__state--empty" id="ep-style-state-empty">
+            <svg class="ep-icon ep-icon--14"><use href="#i-info"/></svg>选中画布中的元素即可编辑样式
+          </div>
+          <div class="ep-style__state ep-style__state--block is-hidden" id="ep-style-state-block">
+            <svg class="ep-icon ep-icon--14"><use href="#i-warn"/></svg>该元素仅可整体移动/隐藏
+          </div>
+          <div class="ep-style__state ep-style__state--mixed is-hidden" id="ep-style-state-mixed">
+            <svg class="ep-icon ep-icon--14"><use href="#i-warn"/></svg>已选中 2 个元素，不一致项显示「混合」
+          </div>
+
+          <!-- 文字 -->
+          <div class="ep-style__group">
+            <h3 class="ep-style__grouph">文字</h3>
+            <div class="ep-field">
+              <span class="ep-field__label">字体</span>
+              <span class="ep-field__ctrl">
+                <span class="ep-fake-select" data-field="fontFamily"><span class="ep-field__val">system-ui</span><svg class="ep-icon ep-icon--12"><use href="#i-chev-down"/></svg></span>
+              </span>
+            </div>
+            <div class="ep-field">
+              <span class="ep-field__label">字号</span>
+              <span class="ep-field__ctrl">
+                <input class="ep-input ep-input--num" data-field="fontSize" value="34" aria-label="字号">
+                <input class="ep-input ep-input--num" data-field="lineHeight" value="1.28" aria-label="行高">
+              </span>
+            </div>
+            <div class="ep-field">
+              <span class="ep-field__label">字重</span>
+              <span class="ep-field__ctrl">
+                <span class="ep-fake-select" data-field="fontWeight"><span class="ep-field__val">700</span><svg class="ep-icon ep-icon--12"><use href="#i-chev-down"/></svg></span>
+              </span>
+            </div>
+            <div class="ep-field">
+              <span class="ep-field__label">字距</span>
+              <span class="ep-field__ctrl">
+                <input class="ep-input ep-input--num" data-field="letterSpacing" value="0" aria-label="字距">
+                <span class="ep-chip">px</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 颜色 -->
+          <div class="ep-style__group">
+            <h3 class="ep-style__grouph">颜色</h3>
+            <div class="ep-field">
+              <span class="ep-field__label">文字颜色</span>
+              <span class="ep-field__ctrl">
+                <span class="ep-color">
+                  <span class="ep-color__sw" data-sw="color" style="background:#12325E"></span>
+                  <span class="ep-color__hex" data-field="color">#12325E</span>
+                  <span class="ep-color__none" data-field="color-none"></span>
+                </span>
+              </span>
+            </div>
+            <div class="ep-field">
+              <span class="ep-field__label">背景色</span>
+              <span class="ep-field__ctrl">
+                <span class="ep-color">
+                  <span class="ep-color__sw" data-sw="bg" style="background:#FFFFFF"></span>
+                  <span class="ep-color__hex" data-field="bg">#FFFFFF</span>
+                  <span class="ep-color__none" data-field="bg-none">无</span>
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 段落 -->
+          <div class="ep-style__group">
+            <h3 class="ep-style__grouph">段落</h3>
+            <div class="ep-field">
+              <span class="ep-field__label">对齐</span>
+              <span class="ep-field__ctrl">
+                <span class="ep-mini-seg" id="ep-align-seg">
+                  <button class="ep-mini-seg__btn is-on" type="button" data-align-text="left" title="left"><svg class="ep-icon ep-icon--14"><use href="#i-align-left-t"/></svg></button>
+                  <button class="ep-mini-seg__btn" type="button" data-align-text="center" title="center"><svg class="ep-icon ep-icon--14"><use href="#i-align-center-t"/></svg></button>
+                  <button class="ep-mini-seg__btn" type="button" data-align-text="right" title="right"><svg class="ep-icon ep-icon--14"><use href="#i-align-right-t"/></svg></button>
+                  <button class="ep-mini-seg__btn" type="button" data-align-text="justify" title="justify"><svg class="ep-icon ep-icon--14"><use href="#i-align-justify-t"/></svg></button>
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 列表 -->
+          <div class="ep-style__group">
+            <h3 class="ep-style__grouph">列表</h3>
+            <div class="ep-field">
+              <span class="ep-field__label"></span>
+              <span class="ep-field__ctrl">
+                <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="style-to-list">
+                  <svg class="ep-icon ep-icon--14"><use href="#i-list-ul"/></svg>转为列表
+                </button>
+                <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="style-unlist">取消列表</button>
+              </span>
+            </div>
+          </div>
+
+          <!-- 链接 -->
+          <div class="ep-style__group">
+            <h3 class="ep-style__grouph">链接</h3>
+            <div class="ep-field">
+              <span class="ep-field__label">链接</span>
+              <span class="ep-field__ctrl">
+                <input class="ep-input ep-input--mono" data-field="href" placeholder="粘贴链接…" aria-label="链接地址">
+              </span>
+            </div>
+            <div class="ep-field">
+              <span class="ep-field__label"></span>
+              <span class="ep-field__ctrl">
+                <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="set-link">
+                  <svg class="ep-icon ep-icon--14"><use href="#i-link"/></svg>设置链接
+                </button>
+                <button class="ep-btn ep-btn--sm ep-btn--block" type="button" data-act="clear-link">清除链接</button>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ════════ 区块 10：底部面包屑 ════════ -->
+  <div class="ep-statusbar">
+    <span class="ep-statusbar__label">路径</span>
+    <div class="ep-crumb" id="ep-crumb">
+      <span class="ep-crumb__item">body</span>
+      <span class="ep-crumb__sep">›</span>
+      <span class="ep-crumb__item">section.hero</span>
+      <span class="ep-crumb__sep">›</span>
+      <span class="ep-crumb__item is-current">h1.title</span>
+    </div>
+    <div class="ep-statusbar__spacer"></div>
+    <span class="ep-statusbar__stat"><svg class="ep-icon ep-icon--12"><use href="#i-check"/></svg>已保存</span>
+    <span class="ep-statusbar__stat">节点 24</span>
+    <span class="ep-statusbar__stat">缩放 100%</span>
+  </div>
+</div>
+
+<!-- 区块 11：toast -->
+<div class="ep-toast" id="ep-toast" role="status" aria-live="polite">
+  <span class="ep-toast__ico"><svg class="ep-icon ep-icon--14"><use href="#i-check"/></svg></span>
+  <span class="ep-toast__text">导入成功</span>
+</div>
+
+<!-- 区块 12：右键菜单 -->
+<div class="ep-menu" id="ep-menu" role="menu">
+  <button class="ep-menu__item" type="button" data-menu="delete">
+    <svg class="ep-icon"><use href="#i-trash"/></svg>删除<span class="ep-menu__kbd">Del</span>
+  </button>
+  <button class="ep-menu__item" type="button" data-menu="duplicate">
+    <svg class="ep-icon"><use href="#i-copy"/></svg>复制<span class="ep-menu__kbd">Ctrl D</span>
+  </button>
+  <button class="ep-menu__item" type="button" data-menu="reset">
+    <svg class="ep-icon"><use href="#i-reset"/></svg>重置位移
+  </button>
+  <div class="ep-menu__sep"></div>
+  <button class="ep-menu__item" type="button" data-menu="lock">
+    <svg class="ep-icon"><use href="#i-lock"/></svg><span data-menu-label>锁定</span>
+  </button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var app = $('ep-app'), paper = $('ep-paper'), stage = $('ep-stage'), viewport = $('ep-viewport');
+  var canvasCard = $('ep-canvas-card'), previewCard = $('ep-preview-card'), previewStage = $('ep-preview-stage');
+  var hoverBox = $('ep-hover'), selBox = $('ep-selected'), selLabel = $('ep-sel-label');
+  var lockBadge = $('ep-lock'), editTag = $('ep-edittag');
+  var handles = [].slice.call(document.querySelectorAll('.ep-handle'));
+  var toastEl = $('ep-toast'), toastText = toastEl.querySelector('.ep-toast__text');
+  var menu = $('ep-menu'), stylePanel = $('ep-style');
+
+  var locked = {}, hidden = {}, selection = [], multiBoxes = [];
+  var editing = null, toastTimer = 0;
+
+  /* ── toast ── */
+  function toast(msg){
+    toastText.textContent = msg;
+    toastEl.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('is-on'); }, 2400);
+  }
+
+  /* ── 元素查找 ── */
+  function byLabel(label){
+    if(!label) return null;
+    if(label === 'body') return paper;
+    return paper.querySelector('[data-ep-label="' + label + '"]');
+  }
+  function labelOf(el){ return el && el.getAttribute ? (el.getAttribute('data-ep-label') || '') : ''; }
+
+  /* ── 覆盖层绘制 ── */
+  function hideOverlay(){
+    hoverBox.style.display = 'none';
+    selBox.style.display = 'none';
+    lockBadge.style.display = 'none';
+    editTag.classList.remove('is-on');
+    handles.forEach(function(h){ h.style.display = 'none'; });
+  }
+  function boxOf(el){
+    var r = el.getBoundingClientRect(), o = viewport.getBoundingClientRect();
+    return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height };
+  }
+  function drawSelection(){
+    multiBoxes.forEach(function(b){ b.remove(); });
+    multiBoxes = [];
+    if(!selection.length){ hideOverlay(); return; }
+    var main = byLabel(selection[selection.length - 1]);
+    if(!main || !main.getBoundingClientRect){ hideOverlay(); return; }
+    var b = boxOf(main);
+    selBox.style.display = 'block';
+    selBox.style.left = b.x + 'px'; selBox.style.top = b.y + 'px';
+    selBox.style.width = b.w + 'px'; selBox.style.height = b.h + 'px';
+    selLabel.textContent = labelOf(main) || main.tagName.toLowerCase();
+    var isLocked = !!locked[labelOf(main)];
+    var cap = main.getAttribute('data-ep-cap');
+    var canResize = cap !== 'block' && !isLocked;
+
+    var s = 10, half = s / 2;
+    var pos = {
+      n:[b.x + b.w/2 - half, b.y - half], s:[b.x + b.w/2 - half, b.y + b.h - half],
+      e:[b.x + b.w - half, b.y + b.h/2 - half], w:[b.x - half, b.y + b.h/2 - half],
+      ne:[b.x + b.w - half, b.y - half], nw:[b.x - half, b.y - half],
+      se:[b.x + b.w - half, b.y + b.h - half], sw:[b.x - half, b.y + b.h - half]
+    };
+    handles.forEach(function(h){
+      var p = pos[h.getAttribute('data-dir')];
+      h.style.display = canResize ? 'block' : 'none';
+      h.style.left = p[0] + 'px'; h.style.top = p[1] + 'px';
+    });
+    lockBadge.style.display = isLocked ? 'flex' : 'none';
+    lockBadge.style.left = (b.x - 8) + 'px';
+    lockBadge.style.top = (b.y - 8) + 'px';
+
+    // 多选：其余元素画虚线框
+    selection.slice(0, -1).forEach(function(lb){
+      var el = byLabel(lb); if(!el || !el.getBoundingClientRect) return;
+      var eb = boxOf(el), d = document.createElement('div');
+      d.className = 'ep-sel ep-sel--multi';
+      d.style.display = 'block';
+      d.style.left = eb.x + 'px'; d.style.top = eb.y + 'px';
+      d.style.width = eb.w + 'px'; d.style.height = eb.h + 'px';
+      viewport.appendChild(d); multiBoxes.push(d);
+    });
+  }
+
+  /* ── 右侧样式面板 ── */
+  var STYLE = {
+    'h1.title':{ fontFamily:'system-ui', fontSize:'34', fontWeight:'700', lineHeight:'1.28', letterSpacing:'-0.4', color:'#12325E', bg:null, align:'left' },
+    'p.subtitle':{ fontFamily:'system-ui', fontSize:'15', fontWeight:'400', lineHeight:'1.75', letterSpacing:'0', color:'#5B6472', bg:null, align:'left' },
+    'a.button':{ fontFamily:'system-ui', fontSize:'14', fontWeight:'600', lineHeight:'1', letterSpacing:'0', color:'#FFFFFF', bg:'#165DFF', align:'center' },
+    'span.brand':{ fontFamily:'system-ui', fontSize:'15', fontWeight:'700', lineHeight:'1.4', letterSpacing:'0.4', color:'#165DFF', bg:null, align:'left' },
+    'span.link':{ fontFamily:'system-ui', fontSize:'13', fontWeight:'600', lineHeight:'1.4', letterSpacing:'0', color:'#722ED1', bg:null, align:'left' },
+    'h3.card-1':{ fontFamily:'system-ui', fontSize:'14', fontWeight:'600', lineHeight:'1.5', letterSpacing:'0', color:'#1F2329', bg:null, align:'left' },
+    'p.card-1':{ fontFamily:'system-ui', fontSize:'12', fontWeight:'400', lineHeight:'1.7', letterSpacing:'0', color:'#6B7280', bg:null, align:'left' }
+  };
+  function setField(name, val){
+    var el = stylePanel.querySelector('[data-field="' + name + '"]');
+    if(!el) return;
+    if(el.tagName === 'INPUT') el.value = val;
+    else el.textContent = val;
+  }
+  function markMixed(on){
+    stylePanel.querySelectorAll('.ep-field__val, .ep-color__hex').forEach(function(n){
+      if(on) n.setAttribute('data-was', n.textContent);
+    });
+    if(on){
+      ['fontFamily','fontWeight'].forEach(function(f){
+        var n = stylePanel.querySelector('.ep-fake-select[data-field="' + f + '"] .ep-field__val');
+        if(n) n.textContent = '混合';
+      });
+      ['fontSize','lineHeight','letterSpacing'].forEach(function(f){ setField(f, '混合'); });
+      setField('color', '混合'); setField('bg', '混合');
+    }
+  }
+  function refreshStylePanel(){
+    var has = selection.length > 0;
+    var cur = has ? byLabel(selection[selection.length - 1]) : null;
+    var cap = cur ? cur.getAttribute('data-ep-cap') : null;
+    var isMixed = selection.length > 1;
+
+    stylePanel.classList.toggle('is-empty', !has);
+    stylePanel.classList.toggle('is-block', has && cap === 'block' && !isMixed);
+    $('ep-style-state-empty').classList.toggle('is-hidden', has);
+    $('ep-style-state-block').classList.toggle('is-hidden', !(has && cap === 'block' && !isMixed));
+    $('ep-style-state-mixed').classList.toggle('is-hidden', !isMixed);
+    $('ep-style-target').textContent = !has ? '未选中'
+      : (isMixed ? '已选 ' + selection.length + ' 个' : (labelOf(cur) || cur.tagName.toLowerCase()));
+
+    if(!has || cap === 'block'){ return; }
+    if(isMixed){ markMixed(true); return; }
+    markMixed(false);
+    var s = STYLE[labelOf(cur)] || STYLE['h1.title'];
+    var fsel = stylePanel.querySelector('.ep-fake-select[data-field="fontFamily"] .ep-field__val');
+    if(fsel) fsel.textContent = s.fontFamily;
+    var wsel = stylePanel.querySelector('.ep-fake-select[data-field="fontWeight"] .ep-field__val');
+    if(wsel) wsel.textContent = s.fontWeight;
+    setField('fontSize', s.fontSize); setField('lineHeight', s.lineHeight);
+    setField('letterSpacing', s.letterSpacing); setField('color', s.color);
+    setField('bg', s.bg || ''); setField('bg-none', s.bg ? '' : '无');
+    stylePanel.querySelector('[data-sw="color"]').style.background = s.color;
+    stylePanel.querySelector('[data-sw="bg"]').style.background = s.bg || 'transparent';
+    stylePanel.querySelectorAll('#ep-align-seg .ep-mini-seg__btn').forEach(function(b){
+      b.classList.toggle('is-on', b.getAttribute('data-align-text') === s.align);
+    });
+    setField('href', labelOf(cur) === 'a.button' ? 'example.com/signup' : '');
+  }
+
+  /* ── 面包屑 ── */
+  function refreshCrumb(){
+    var crumb = $('ep-crumb'), cur = selection.length ? byLabel(selection[selection.length - 1]) : null;
+    if(!cur){ crumb.innerHTML = '<span class="ep-crumb__item">body</span>'; return; }
+    var chain = [], node = cur;
+    while(node && node !== paper && node.getAttribute){
+      if(node.hasAttribute('data-ep-label')) chain.unshift(node);
+      node = node.parentElement;
+    }
+    var html = '<span class="ep-crumb__item" data-crumb="body">body</span>';
+    chain.forEach(function(el){
+      html += '<span class="ep-crumb__sep">›</span>' +
+        '<span class="ep-crumb__item' + (el === cur ? ' is-current' : '') + '" data-crumb="' +
+        (labelOf(el) || 'body') + '">' + (labelOf(el) || el.tagName.toLowerCase()) + '</span>';
+    });
+    crumb.innerHTML = html;
+  }
+
+  /* ── 图层高亮 ── */
+  function refreshLayers(){
+    var cur = selection.length ? labelOf(byLabel(selection[selection.length - 1])) : '';
+    $('ep-layer-list').querySelectorAll('.ep-layers__row').forEach(function(r){
+      r.classList.toggle('is-selected', !!cur && r.getAttribute('data-target') === cur);
+    });
+  }
+
+  /* ── 选中 ── */
+  function select(label, additive){
+    if(!additive) selection = [];
+    if(label){
+      var i = selection.indexOf(label);
+      if(i >= 0) selection.splice(i, 1); else selection.push(label);
+    }
+    drawSelection(); refreshStylePanel(); refreshCrumb(); refreshLayers();
+  }
+
+  /* ── 交互 ①：点击画布元素 → 选中框 + 8 手柄 + 右侧面板激活 ── */
+  paper.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('[data-ep-label]') : null;
+    // 编辑态：点击编辑元素内部不打断输入，点击其他位置先提交
+    if(editing){
+      if(el && editing === el && editing.contains(e.target)) return;
+      endEdit();
+    }
+    if(!el) return;
+    if(el.tagName === 'A') e.preventDefault(); // 编辑态不跳转链接
+    var lb = labelOf(el);
+    if(locked[lb]){ select(lb, e.shiftKey); toast('该元素已锁定'); return; }
+    select(lb, e.shiftKey);
+  });
+
+  /* ── hover 高亮 ── */
+  paper.addEventListener('mouseover', function(e){
+    if(editing) return;
+    var el = e.target.closest ? e.target.closest('[data-ep-label]') : null;
+    if(!el) return;
+    var lb = labelOf(el);
+    if(selection.indexOf(lb) >= 0){ hoverBox.style.display = 'none'; return; }
+    var b = boxOf(el);
+    hoverBox.style.display = 'block';
+    hoverBox.style.left = b.x + 'px'; hoverBox.style.top = b.y + 'px';
+    hoverBox.style.width = b.w + 'px'; hoverBox.style.height = b.h + 'px';
+  });
+  paper.addEventListener('mouseleave', function(){ hoverBox.style.display = 'none'; });
+
+  /* ── 区块 13：就地改字态 ── */
+  function beginEdit(el){
+    editing = el;
+    el.classList.add('is-editing');
+    el.setAttribute('contenteditable', 'true');
+    el.focus();
+    var b = boxOf(el);
+    editTag.classList.add('is-on');
+    editTag.style.left = (b.x + b.w - 56) + 'px';
+    editTag.style.top = (b.y - 21) + 'px';
+    selBox.style.display = 'none';
+    handles.forEach(function(h){ h.style.display = 'none'; });
+  }
+  function endEdit(){
+    if(!editing) return;
+    editing.classList.remove('is-editing');
+    editing.removeAttribute('contenteditable');
+    editing = null;
+    editTag.classList.remove('is-on');
+    drawSelection(); refreshStylePanel();
+  }
+  paper.addEventListener('dblclick', function(e){
+    var el = e.target.closest ? e.target.closest('[data-ep-label]') : null;
+    if(!el) return;
+    e.preventDefault();
+    if(locked[labelOf(el)]){ toast('该元素已锁定'); return; }
+    if(el.getAttribute('data-ep-cap') === 'block'){ toast('该元素仅可整体移动/隐藏'); return; }
+    endEdit(); beginEdit(el);
+  });
+  document.addEventListener('click', function(e){
+    if(editing && !editing.contains(e.target)) endEdit();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ endEdit(); hideMenu(); }
+  });
+
+  /* ── 区块 12：右键菜单 ── */
+  function showMenu(x, y, label){
+    menu.classList.add('is-on');
+    var r = menu.getBoundingClientRect();
+    menu.style.left = Math.min(x, window.innerWidth - r.width - 8) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
+    menu.querySelector('[data-menu-label]').textContent = locked[label] ? '解锁' : '锁定';
+    menu.setAttribute('data-label', label);
+  }
+  function hideMenu(){ menu.classList.remove('is-on'); }
+  paper.addEventListener('contextmenu', function(e){
+    var el = e.target.closest ? e.target.closest('[data-ep-label]') : null;
+    e.preventDefault();
+    if(!el) return;
+    var lb = labelOf(el);
+    select(lb, false);
+    showMenu(e.clientX, e.clientY, lb);
+  });
+  document.addEventListener('click', function(){ hideMenu(); });
+  menu.addEventListener('click', function(e){
+    var item = e.target.closest('[data-menu]'); if(!item) return;
+    e.stopPropagation();
+    var lb = menu.getAttribute('data-label');
+    var node = byLabel(lb), act = item.getAttribute('data-menu');
+    if(act === 'delete'){
+      if(node && node !== paper){ node.remove(); select(null); toast('已删除该元素'); }
+    } else if(act === 'duplicate'){
+      if(node && node.parentElement){ var c = node.cloneNode(true); node.parentElement.appendChild(c); toast('已复制该元素'); }
+    } else if(act === 'reset'){
+      if(node) node.style.transform = '';
+      toast('已重置位移');
+    } else if(act === 'lock'){
+      locked[lb] = !locked[lb];
+      if(node) node.classList.toggle('is-locked', !!locked[lb]);
+      toast(locked[lb] ? '该元素已锁定' : '已解锁');
+      drawSelection(); refreshLayers();
+    }
+    hideMenu();
+  });
+
+  /* ── 图层面板：选中 / 锁定 / 隐藏 / 折叠 ── */
+  $('ep-layer-list').addEventListener('click', function(e){
+    var row = e.target.closest('.ep-layers__row');
+    var more = e.target.closest('.ep-layers__more');
+    if(more){
+      more.textContent = '已展开全部 6 个节点';
+      return;
+    }
+    if(!row) return;
+    var tg = e.target.closest('[data-toggle]');
+    if(tg){
+      var on = row.classList.toggle('is-collapsed');
+      tg.innerHTML = '<svg class="ep-icon ep-icon--12"><use href="#' + (on ? 'i-chev-right' : 'i-chev-down') + '"/></svg>';
+      var d = parseInt(row.getAttribute('data-depth'), 10), sib = row.nextElementSibling;
+      while(sib && sib.classList && sib.classList.contains('ep-layers__row') &&
+            parseInt(sib.getAttribute('data-depth'), 10) > d){
+        sib.classList.toggle('is-child-hidden', on); sib = sib.nextElementSibling;
+      }
+      return;
+    }
+    var opBtn = e.target.closest('[data-op]');
+    var lb = row.getAttribute('data-target');
+    if(opBtn){
+      var op = opBtn.getAttribute('data-op'), node = byLabel(lb);
+      if(op === 'lock'){
+        locked[lb] = !locked[lb];
+        opBtn.innerHTML = '<svg class="ep-icon"><use href="#' + (locked[lb] ? 'i-lock' : 'i-unlock') + '"/></svg>';
+        if(node) node.classList.toggle('is-locked', !!locked[lb]);
+        toast(locked[lb] ? '该元素已锁定' : '已解锁');
+        drawSelection();
+      } else {
+        hidden[lb] = !hidden[lb];
+        opBtn.innerHTML = '<svg class="ep-icon"><use href="#' + (hidden[lb] ? 'i-eye-off' : 'i-eye') + '"/></svg>';
+        if(node) node.style.visibility = hidden[lb] ? 'hidden' : '';
+        toast(hidden[lb] ? '已隐藏该元素' : '已显示该元素');
+        if(hidden[lb] && selection.indexOf(lb) >= 0) select(null);
+        else drawSelection();
+      }
+      return;
+    }
+    if(e.target.closest('.ep-layers__ops')) return;
+    if(lb === 'body'){ select(null); return; }
+    select(lb, false);
+  });
+
+  /* ── 面包屑点击跳选 ── */
+  $('ep-crumb').addEventListener('click', function(e){
+    var item = e.target.closest('[data-crumb]'); if(!item) return;
+    var lb = item.getAttribute('data-crumb');
+    if(lb === 'body'){ select(null); toast('已跳到文档根节点'); }
+    else select(lb, false);
+  });
+
+  /* ── 对齐 / 分布 ── */
+  document.querySelectorAll('[data-align]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = b.getAttribute('data-align');
+      if(selection.length < 2){ toast('对齐需要至少 2 个元素'); return; }
+      if((t === 'hdistribute' || t === 'vdistribute') && selection.length < 3){
+        toast('等距分布需要至少 3 个元素'); return;
+      }
+      toast('已完成' + b.getAttribute('title'));
+    });
+  });
+
+  /* ── 区块 9：预览态切换 ── */
+  function setMode(mode){
+    var on = mode === 'preview';
+    document.querySelectorAll('#ep-mode-seg .ep-seg__btn').forEach(function(b){
+      b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+    });
+    if(on){
+      endEdit();
+      previewStage.appendChild(paper);
+      canvasCard.classList.add('is-hidden');
+      previewCard.classList.remove('is-hidden');
+      selection = []; hideOverlay(); refreshStylePanel(); refreshCrumb(); refreshLayers();
+      toast('预览已打开（脚本可运行）');
+    } else {
+      viewport.appendChild(paper);
+      previewCard.classList.add('is-hidden');
+      canvasCard.classList.remove('is-hidden');
+      toast('已返回编辑');
+    }
+  }
+  document.querySelectorAll('#ep-mode-seg .ep-seg__btn').forEach(function(b){
+    b.addEventListener('click', function(){ setMode(b.getAttribute('data-mode')); });
+  });
+
+  /* ── 工具栏按钮 ── */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-act]'); if(!btn) return;
+    var act = btn.getAttribute('data-act');
+    var map = {
+      'import':'导入成功', 'blank':'导入成功', 'choose-file':'导入成功',
+      'export':'导出成功（含外链资源，离线打开可能失效）',
+      'copy':'已复制 HTML 到剪贴板', 'reset':'已重置位移',
+      'resume':'已恢复草稿', 'delete-sel':'请先在画布中选中元素',
+      'set-link':'已设置链接', 'clear-link':'已清除链接',
+      'style-to-list':'已转为列表', 'style-unlist':'已取消列表',
+      'to-list-ul':'暂不支持此块转换为列表', 'to-list-ol':'暂不支持此块转换为列表',
+      'draft-delete':'草稿已删除', 'preview':'预览已打开（脚本可运行）'
+    };
+    if(act === 'preview'){ setMode(previewCard.classList.contains('is-hidden') ? 'preview' : 'edit'); return; }
+    if(act === 'back-edit'){ setMode('edit'); return; }
+    if(act === 'draft-delete'){
+      $('ep-draft-has').classList.add('is-hidden');
+      $('ep-draft-none').classList.remove('is-hidden');
+      toast('草稿已删除'); return;
+    }
+    if(map[act]) toast(map[act]);
+  });
+
+  /* ── 插入面板 ── */
+  document.querySelectorAll('[data-insert]').forEach(function(b){
+    b.addEventListener('click', function(){ toast('已插入' + b.textContent.trim() + '元素'); });
+  });
+
+  /* ── 格式刷：单击一次 / 双击连续（对齐原实现语义）── */
+  var painter = $('ep-painter');
+  painter.addEventListener('click', function(){
+    painter.classList.add('is-on');
+    if(painter.getAttribute('data-continuous')) return;
+    toast('格式刷已就绪，点击目标元素应用');
+    setTimeout(function(){
+      if(!painter.getAttribute('data-continuous')){
+        painter.classList.remove('is-on');
+      }
+    }, 1600);
+  });
+  painter.addEventListener('dblclick', function(){
+    painter.setAttribute('data-continuous', '1');
+    painter.classList.add('is-on');
+    toast('格式刷连续模式（再次双击结束）');
+  });
+
+  /* ── 交互 ③：收起 / 展开左面板 ── */
+  var collapseBtn = $('ep-collapse-btn');
+  collapseBtn.addEventListener('click', function(){
+    var collapsed = app.classList.toggle('is-left-collapsed');
+    collapseBtn.querySelector('use').setAttribute('href', collapsed ? '#i-chev-right' : '#i-panel-left');
+    collapseBtn.lastChild.nodeValue = collapsed ? ' 展开左栏' : ' 收起左栏';
+    drawSelection();
+  });
+
+  /* ── 深浅模式切换（另见顶部 prefers-color-scheme 规则）── */
+  var themeBtn = $('ep-theme-btn');
+  function setTheme(t){
+    document.documentElement.setAttribute('data-ep-theme', t);
+    themeBtn.querySelector('use').setAttribute('href', t === 'dark' ? '#i-sun' : '#i-moon');
+    themeBtn.setAttribute('title', t === 'dark' ? '切换到浅色模式' : '切换到深色模式');
+    drawSelection();
+  }
+  themeBtn.addEventListener('click', function(){
+    var dark = document.documentElement.getAttribute('data-ep-theme') === 'dark';
+    setTheme(dark ? 'light' : 'dark');
+    toast(dark ? '已切换到浅色模式' : '已切换到深色模式');
+  });
+
+  /* ── 首屏：默认选中 h1.title，让选中框 + 8 手柄 + 样式面板激活态一屏可见 ── */
+  function boot(){
+    select('h1.title', false);
+    window.addEventListener('resize', drawSelection);
+    stage.addEventListener('scroll', drawSelection);
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

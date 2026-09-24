@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>易页 EasyPage · UI 重构批次 1 实机对照</title>
+    <style>
+      :root {
+        --bg: #f6f6f4;
+        --surface: #ffffff;
+        --surface-2: #fafaf8;
+        --surface-3: #f1f1ee;
+        --ink: #1f1f1e;
+        --ink-2: #6b6b68;
+        --ink-3: #a3a39e;
+        --line: #ecece8;
+        --line-2: #deded8;
+        --accent: #2f6bff;
+        --accept: #1f7a4d;
+        --accept-bg: #eaf5ef;
+        --warn: #b4451f;
+        --warn-bg: #fdf0ea;
+        --sp-1: 4px;
+        --sp-2: 8px;
+        --sp-3: 12px;
+        --sp-4: 16px;
+        --sp-5: 24px;
+        --sp-6: 32px;
+        --radius: 8px;
+        --font:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+          'Microsoft YaHei', sans-serif;
+        --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: var(--sp-6) var(--sp-5) 64px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font);
+        font-size: 14px;
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+
+      /* ── 页头 ───────────────────────────────────────────────── */
+      header {
+        padding-bottom: var(--sp-5);
+        border-bottom: 1px solid var(--line-2);
+        margin-bottom: var(--sp-5);
+      }
+      h1 {
+        margin: 0 0 var(--sp-2);
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--ink-2);
+        margin: 0 0 var(--sp-4);
+      }
+      .lead {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        border-radius: var(--radius);
+        padding: var(--sp-4) var(--sp-4);
+        margin: 0;
+      }
+      .lead strong {
+        font-weight: 600;
+      }
+      .lead code {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        background: var(--surface-3);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+
+      /* ── 口径条 ─────────────────────────────────────────────── */
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--sp-3);
+        margin: var(--sp-5) 0 var(--sp-6);
+      }
+      .meta div {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .meta dt {
+        color: var(--ink-3);
+        font-size: 11.5px;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+      }
+      .meta dd {
+        margin: 0;
+        font-size: 13px;
+      }
+      .meta dd code {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      h2 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: var(--sp-6) 0 var(--sp-3);
+        padding-top: var(--sp-5);
+        border-top: 1px solid var(--line-2);
+      }
+      h2:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+      h2 .n {
+        color: var(--ink-3);
+        font-weight: 400;
+        margin-right: var(--sp-2);
+      }
+
+      /* ── 总表 ───────────────────────────────────────────────── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: var(--sp-3) var(--sp-4);
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      thead th {
+        background: var(--surface-3);
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td code {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .bad {
+        color: var(--warn);
+        font-weight: 600;
+      }
+      .good {
+        color: var(--accept);
+        font-weight: 600;
+      }
+      .chip {
+        display: inline-block;
+        padding: 0 7px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 19px;
+        white-space: nowrap;
+      }
+      .chip--fix {
+        background: var(--accept-bg);
+        color: var(--accept);
+      }
+      .chip--new {
+        background: #eef3ff;
+        color: var(--accent);
+      }
+      .chip--keep {
+        background: var(--surface-3);
+        color: var(--ink-2);
+      }
+
+      /* ── 对照图卡 ───────────────────────────────────────────── */
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-3);
+      }
+      @media (max-width: 820px) {
+        .pair {
+          grid-template-columns: 1fr;
+        }
+      }
+      figure {
+        margin: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .tag {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-2);
+        padding: var(--sp-2) var(--sp-3);
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .tag b {
+        font-weight: 600;
+      }
+      .tag--before b {
+        color: var(--warn);
+      }
+      .tag--after b {
+        color: var(--accept);
+      }
+      .tag span {
+        color: var(--ink-3);
+        font-family: var(--mono);
+        font-size: 11.5px;
+      }
+      figure a {
+        display: block;
+        line-height: 0;
+        background: var(--surface-2);
+      }
+      figure img {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: zoom-in;
+      }
+      figcaption {
+        padding: var(--sp-3) var(--sp-3);
+        font-size: 12.5px;
+        color: var(--ink-2);
+        border-top: 1px solid var(--line);
+      }
+      figcaption code {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--ink);
+      }
+      .note {
+        font-size: 13px;
+        color: var(--ink-2);
+        margin: 0 0 var(--sp-4);
+      }
+      .note b {
+        color: var(--ink);
+      }
+
+      ol.steps {
+        counter-reset: s;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ol.steps li {
+        counter-increment: s;
+        position: relative;
+        padding-left: var(--sp-6);
+        margin-bottom: var(--sp-3);
+      }
+      ol.steps li::before {
+        content: counter(s);
+        position: absolute;
+        left: 0;
+        top: 2px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--surface-3);
+        color: var(--ink-2);
+        font-size: 11.5px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      pre {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: var(--sp-4);
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1.6;
+        margin: var(--sp-3) 0;
+      }
+      .todo {
+        background: var(--warn-bg);
+        border: 1px solid #f3d9cc;
+        border-radius: var(--radius);
+        padding: var(--sp-4);
+      }
+      .todo h3 {
+        margin: 0 0 var(--sp-2);
+        font-size: 14px;
+        color: var(--warn);
+      }
+      .todo ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      footer {
+        margin-top: var(--sp-6);
+        padding-top: var(--sp-4);
+        border-top: 1px solid var(--line-2);
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>易页 EasyPage · UI 重构批次 1 实机对照</h1>
+        <p class="sub">R1 预览全屏覆盖层 · R2 缩放系统 · R3 画布高度自适应 · R4 上下文工具条 · R5 图标化 · R7/R8 属性区折叠与盒模型</p>
+        <p class="lead">
+          <strong>结论：</strong>批次 1 的四项用户可见缺陷全部消除，且都能用一帧截图直接指认。最硬的一条是预览——改造前预览帧的
+          <code>rect=[0,720,1280,600]</code>，落在视口下沿之外，<strong>可见高度 0/720px</strong>；改造后同一动作下
+          <strong>可见 592/720px</strong>。其次是画布高度：改造前固定 600px，1440×900 视口下白留
+          <strong>194px</strong>；改造后恒定只留 50px（该 50px 是画布下沿行「面包屑 + 缩放控件」占位，不是死白）。
+        </p>
+      </header>
+
+      <dl class="meta">
+        <div>
+          <dt>对照方式</dt>
+          <dd>同一脚本跑两份产物，固定 fixture、固定动作序列</dd>
+        </div>
+        <div>
+          <dt>改造前</dt>
+          <dd><code>dde3df4</code> · 110.07 kB</dd>
+        </div>
+        <div>
+          <dt>改造后</dt>
+          <dd><code>79fe3dd</code> · 135.37 kB</dd>
+        </div>
+        <div>
+          <dt>加载方式</dt>
+          <dd><code>file://</code> 直开单文件产物</dd>
+        </div>
+      </dl>
+
+      <h2>一、量测总表</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>视口</th>
+            <th>改造前</th>
+            <th>改造后</th>
+            <th>判定</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A 画布高度 · 默认态</td>
+            <td><code>1280×720</code></td>
+            <td>画布 <code>1248×600</code>（固定）· 下沿留白 14px</td>
+            <td>画布 <code>1248×564</code> · 下沿留白 50px</td>
+            <td><span class="chip chip--fix">已修</span></td>
+          </tr>
+          <tr>
+            <td>B 画布高度 · 双面板全开</td>
+            <td><code>1440×900</code></td>
+            <td>画布 <code>768×600</code>（固定）· 下沿留白 <span class="bad">194px</span></td>
+            <td>画布 <code>768×744</code> · 下沿留白 50px</td>
+            <td><span class="chip chip--fix">已修</span></td>
+          </tr>
+          <tr>
+            <td>C 选中元素</td>
+            <td><code>1280×720</code></td>
+            <td>画布 <code>608×600</code> · <span class="bad">外壳纵向溢出 22px</span></td>
+            <td>画布 <code>608×520</code> · 无溢出 · 画布 y 150→150 <span class="good">位移 0</span></td>
+            <td><span class="chip chip--fix">已修</span></td>
+          </tr>
+          <tr>
+            <td>D 预览</td>
+            <td><code>1280×720</code></td>
+            <td>帧 <code>rect=[0,720,1280,600]</code> · <span class="bad">可见高度 0/720px</span> · 外壳被顶出 600px</td>
+            <td>覆盖层 <code>1280×672</code> · 帧 <code>[16,112,1248,592]</code> · <span class="good">可见 592/720px</span></td>
+            <td><span class="chip chip--fix">已修</span></td>
+          </tr>
+          <tr>
+            <td>F 缩放 · 窄视口</td>
+            <td><code>1024×768</code></td>
+            <td>渲染视口宽 <span class="bad">352px</span>（只见版面 29%）</td>
+            <td><code>zoom=0.29</code> → 渲染视口宽 <span class="good">1214px</span>（101%）</td>
+            <td><span class="chip chip--fix">已修</span></td>
+          </tr>
+          <tr>
+            <td>E 预览设备档位</td>
+            <td><code>1280×720</code></td>
+            <td>不存在</td>
+            <td>切平板 → 帧 <code>768×592</code>，可见 592px</td>
+            <td><span class="chip chip--new">新增</span></td>
+          </tr>
+          <tr>
+            <td>G 属性区折叠分组</td>
+            <td><code>1440×900</code></td>
+            <td>无 <code>.ep-section</code></td>
+            <td><code>3</code> 组（text / box / deco）</td>
+            <td><span class="chip chip--new">新增</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2><span class="n">D</span>预览：从「点开一片空白」到全屏可见</h2>
+      <p class="note">
+        改造前预览帧被排在 <code>.ep-main</code> 之后，而后者 <code>flex:1 1 auto</code> 撑满视高 —— 帧从 y=720
+        起渲染，整块落在首屏之外。用户点「预览」的实际感受是：画布消失、屏幕空白。
+      </p>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--before"><b>改造前</b><span>可见 0 / 720px</span></div>
+          <a href="before-D-preview.png"><img src="before-D-preview.png" alt="改造前：点开预览得到一整屏空白" /></a>
+          <figcaption>
+            帧 <code>rect=[0,720,1280,600]</code>，外壳纵向溢出 600px。预览确实「打开了」，只是永远在屏外。
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>改造后</b><span>可见 592 / 720px</span></div>
+          <a href="after-D-preview.png"><img src="after-D-preview.png" alt="改造后：全屏覆盖层展示预览" /></a>
+          <figcaption>
+            覆盖层 <code>1280×672</code>，从顶栏下方铺开（顶栏保留可点，因为「预览」按钮本身就是开关）。
+          </figcaption>
+        </figure>
+      </div>
+      <p class="note">
+        <b>顺带修掉的状态时序：</b>原实现里 <code>previewOpen</code> 要等帧 <code>load</code> 完才置位，而覆盖层已同步可见
+        —— 「刚点开就再点一次」会读到 <code>false</code> 又走打开分支，表现为「点关关不掉」。现改为状态与覆盖层同步翻转，
+        Esc 判据也改用覆盖层自身状态。
+      </p>
+
+      <h2><span class="n">B</span>画布高度：视口越高，浪费越大</h2>
+      <p class="note">
+        改造前 <code>#ep-canvas-frame</code> 写死 600px 高。1440×900 下画布仍是 600，剩余 <b>194px</b> 全成死白；
+        视口再高只会更浪费。
+      </p>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--before"><b>改造前</b><span>1440×900 · 白留 194px</span></div>
+          <a href="before-B-panels-open-1440x900.png"><img src="before-B-panels-open-1440x900.png" alt="改造前 1440x900 双面板全开时画布下方大片留白" /></a>
+          <figcaption>画布 <code>768×600</code>，下方 194px 没有任何内容的死白。</figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>改造后</b><span>1440×900 · 白留 50px</span></div>
+          <a href="after-B-panels-open-1440x900.png"><img src="after-B-panels-open-1440x900.png" alt="改造后 1440x900 双面板全开时画布吃满可用高度" /></a>
+          <figcaption>画布 <code>768×744</code>，吃满可用高度，只留 50px 给下沿行。</figcaption>
+        </figure>
+      </div>
+      <p class="note">
+        <b>根因值得记一笔：</b><code>.ep-main</code> 是横向 flex 容器，子项的「高度」属交叉轴。原写法
+        <code>align-items:flex-start</code> 把整条高度链断在这里，<code>height:100%</code> 落到高度未定的父级、按规范视为
+        <code>auto</code>，iframe 回落到固有高度 150px。修复的核心不是改数字，是把两处交叉轴改回 <code>stretch</code>，
+        同时让三块侧边面板用 <code>align-self:flex-start</code> 显式退出拉伸（它们的高度语义是「内容高 + 上限」，
+        与画布的「吃掉全部余量」是两回事）。
+        <br />
+        <b>口径说明：</b>1280×720 下改造后画布为 564px，比改造前的固定 600px 略矮 36px —— 这是「保证任何视口都不溢出」
+        换来的一致性，同一档位下改造前会溢出 22px（见场景 C）。
+      </p>
+
+      <h2><span class="n">F</span>缩放：一屏看尽整幅版面</h2>
+      <p class="note">
+        缩放不是「把 iframe 缩小」，而是 <code>layoutW = 容器宽 / zoom</code> 配 <code>transform:scale(zoom)</code>：
+        视觉占位恒等于容器宽，渲染视口变宽。1024×768 且双面板全开时容器只有 352px 宽。
+      </p>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--before"><b>改造前</b><span>渲染视口 352px · 29%</span></div>
+          <a href="before-F-zoom-narrow-1024x768.png"><img src="before-F-zoom-narrow-1024x768.png" alt="改造前窄视口下只能看到版面左侧一竖条" /></a>
+          <figcaption>1:1 渲染，1200px 版面的左侧一竖条，看不到整体版式。</figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>改造后</b><span>zoom=0.29 · 1214px · 101%</span></div>
+          <a href="after-F-zoom-narrow-1024x768.png"><img src="after-F-zoom-narrow-1024x768.png" alt="改造后窄视口下整幅版面缩放到一屏内" /></a>
+          <figcaption><code>zoom=0.29</code>，整幅 1200px 版面缩进 352px 容器，一眼看全。</figcaption>
+        </figure>
+      </div>
+      <p class="note">
+        <b>100% 的回归保障：</b>缩放比写在 <code>frame.dataset.zoom</code>，100% 时删除该属性并清空
+        <code>transform</code> 与内联尺寸 —— 与改造前逐像素一致。因此 <code>zoomOf()</code> 只认这一个来源，
+        绝不用 <code>boundingClientRect</code> 反推（含 transform，且带亚像素误差）。
+      </p>
+
+      <h2><span class="n">C</span>选中元素：不推动画布</h2>
+      <p class="note">
+        上下文工具条（R4）落在画布上沿而不是浮在选中框上 —— 画布上任何绝对定位浮层都会盖住 e2e 会点的坐标。
+        提示文案宽度变化曾触发工具条换行翻转，让画布整体上跳 44px，进而使双击的两次 mousedown 落在不同元素上。
+        现给提示定宽 88px + 省略号（完整值挂 <code>title</code>）。
+      </p>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--before"><b>改造前</b><span>溢出 22px</span></div>
+          <a href="before-C-select-element.png"><img src="before-C-select-element.png" alt="改造前选中元素" /></a>
+          <figcaption>画布 <code>608×600</code>，外壳纵向溢出 22px。</figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>改造后</b><span>位移 0px</span></div>
+          <a href="after-C-select-element.png"><img src="after-C-select-element.png" alt="改造后选中元素，工具条带高度与画布位置均不变" /></a>
+          <figcaption>工具条带 h <code>82→82</code>，画布 y <code>150→150</code>，选中不改变布局。</figcaption>
+        </figure>
+      </div>
+
+      <h2><span class="n">E · G</span>新增能力</h2>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--after"><b>E 预览设备档位</b><span>平板 768×592</span></div>
+          <a href="after-E-preview-device-tablet.png"><img src="after-E-preview-device-tablet.png" alt="预览覆盖层切到平板档位" /></a>
+          <figcaption>被编辑页面多为落地页/活动页，需要确认窄屏表现。档位只改帧宽度，不改沙箱策略。</figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>G 属性区折叠分组</b><span>3 组</span></div>
+          <a href="after-G-style-sections.png"><img src="after-G-style-sections.png" alt="属性面板按文字/盒模型/装饰三组折叠" /></a>
+          <figcaption>
+            改造前 30 个字段排成一列自高 1221px，1440 视口下要滚 45%。现分 3 组，默认只展开「文字」。
+          </figcaption>
+        </figure>
+      </div>
+
+      <h2>二、另附：默认态与全展开</h2>
+      <div class="pair">
+        <figure>
+          <div class="tag tag--after"><b>默认态</b><span>1280×720 · 双面板收起</span></div>
+          <a href="after-A-canvas-1280x720.png"><img src="after-A-canvas-1280x720.png" alt="改造后默认态：双面板收起，画布独占横向空间" /></a>
+          <figcaption>面板默认收起，画布独占横向空间；自动适宽开启。</figcaption>
+        </figure>
+        <figure>
+          <div class="tag tag--after"><b>全展开</b><span>1440×900 · 三栏并存</span></div>
+          <a href="after-G-style-sections.png"><img src="after-G-style-sections.png" alt="改造后三栏并存" /></a>
+          <figcaption>三栏并存时画布仍吃满可用高度。</figcaption>
+        </figure>
+      </div>
+
+      <h2>三、复现方式</h2>
+      <ol class="steps">
+        <li>
+          构建 HEAD 产物并另存：
+          <pre>npx vite build &amp;&amp; cp dist/index.html qa/report/ui-refactor-p1/after.html</pre>
+        </li>
+        <li>
+          构建基线产物。<code>git archive</code> 导出目标提交到临时目录、挂 <code>node_modules</code> 目录联接、
+          就地构建后另存 —— 当前工作树一个字节都不动：
+          <pre>node qa/probes/baseline-build.mjs dde3df4 before qa/report/ui-refactor-p1</pre>
+        </li>
+        <li>
+          同一脚本跑两次，产出同名场景与机读清单：
+          <pre>node qa/audit/batch1-evidence.mjs qa/report/ui-refactor-p1/after.html  qa/report/ui-refactor-p1 after
+node qa/audit/batch1-evidence.mjs qa/report/ui-refactor-p1/before.html qa/report/ui-refactor-p1 before</pre>
+        </li>
+        <li>
+          常驻体检探针（16 项，覆盖高度链 / 选中不推动画布 / 预览状态时序，双视口）：
+          <pre>node qa/probes/batch1-debug.mjs</pre>
+        </li>
+      </ol>
+      <p class="note">
+        机读清单：<code>after-evidence.json</code> / <code>before-evidence.json</code>。场景 E / G 在基线版没有对应 DOM
+        （无设备档位、无折叠分组），记 <code>SKIP</code> 属预期，不是失败。
+      </p>
+
+      <h2>四、遗留与待决</h2>
+      <div class="todo">
+        <h3>三项遗留</h3>
+        <ul>
+          <li>
+            <b>构建体积超预算 5.37 kB</b>：产物 135.37 kB（方案 §6 预算 130 kB）。主因是图标集写成
+            <code>Record&lt;IconName, string&gt;</code> 全量常量，打包器摇不掉树。若要收回，需改成按需函数或把路径拆成独立模块。
+          </li>
+          <li>
+            <b>批次 2/3（R6 / R9–R11）未开工</b>，且
+            <code>docs/plan/07-插件化改造方案.md</code>（tag <code>pivot-extension-20260922</code>）提出把产品形态从独立应用
+            转向浏览器插件，含 4 个未决硬分叉。若最终转向，本批次里的
+            <code>PreviewOverlay</code> + <code>ZoomController</code> + <code>core/interaction/zoom</code> 约 359 行会白做。
+            建议：保留 commit 不回滚，批次 2/3 在形态定案前不开工。
+          </li>
+          <li>
+            <b>本批次的可访问名清单已扩张</b>，新增锚点写进了
+            <code>src/app/style/app.css</code> 头部的「稳定契约」注释，改名即回归。
+          </li>
+        </ul>
+      </div>
+
+      <footer>
+        口径：两份产物分别由 <code>79fe3dd</code>（改造后）与 <code>dde3df4</code>（改造前）构建，同一脚本、同一
+        fixture（<code>qa/fixtures/01-script-carousel.html</code>）、同一动作序列，经 <code>file://</code> 直开单文件产物。
+        回滚标签：<code>ui-refactor-p1-20260922</code>。
+      </footer>
+    </div>
+  </body>
+</html>

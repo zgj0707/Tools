@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "易页 EasyPage · 分层架构与契约偏差",
+    "locale": "zh-CN",
+    "quality_profile": "showcase"
+  },
+  "layout": { "mode": "grid", "origin": [40, 40], "cols": 7, "cellW": 156, "cellH": 64, "gapX": 14, "gapY": 46 },
+  "components": [
+    { "id": "bootstrap", "type": "backend", "label": "createApp()", "sublabel": "App.ts:886 · 事实装配根", "row": 0, "col": 3 },
+    { "id": "panels", "type": "frontend", "label": "面板组 panels/", "sublabel": "样式 · 元素 · 图层", "row": 1, "col": 1 },
+    { "id": "shell", "type": "frontend", "label": "App 外壳", "sublabel": "889 行 · 20 字段", "row": 1, "col": 3 },
+    { "id": "canvas", "type": "frontend", "label": "画布外壳", "sublabel": "CanvasHost + 覆盖层", "row": 1, "col": 5 },
+    { "id": "ports", "type": "backend", "label": "ports.ts", "sublabel": "22 个端口接口", "row": 2, "col": 1 },
+    { "id": "core", "type": "backend", "label": "core 领域层", "sublabel": "命令 · 交互 · 纯逻辑", "row": 2, "col": 3 },
+    { "id": "serialize", "type": "backend", "label": "stripArtifacts", "sublabel": "残留剥离 · 阻断", "row": 2, "col": 5 },
+    { "id": "domio", "type": "backend", "label": "DomParserIO", "sublabel": "解析 / 序列化", "row": 3, "col": 1 },
+    { "id": "adapters", "type": "backend", "label": "adapters 端口实现", "sublabel": "解析 · 交互 · 预览", "row": 3, "col": 3 },
+    { "id": "preview", "type": "security", "label": "预览沙箱", "sublabel": "srcdoc + bridge", "row": 3, "col": 5 },
+    { "id": "editframe", "type": "frontend", "label": "编辑帧 iframe", "sublabel": "allow-same-origin", "row": 4, "col": 3 },
+    { "id": "prevframe", "type": "security", "label": "预览帧 iframe", "sublabel": "allow-scripts", "row": 4, "col": 5 }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "src/app/ · 外壳层", "wraps": ["panels", "shell", "canvas"], "pad": 14 },
+    { "kind": "region", "label": "src/core/ · 领域层（零第三方 import）", "wraps": ["ports", "core", "serialize"], "pad": 14 },
+    { "kind": "region", "label": "src/adapters/ · 端口实现", "wraps": ["domio", "adapters", "preview"], "pad": 14 },
+    { "kind": "security-group", "label": "宿主双 iframe 隔离", "wraps": ["editframe", "prevframe"], "pad": 14 }
+  ],
+  "connections": [
+    { "id": "boot-to-shell", "from": "bootstrap", "to": "shell", "label": "构造并挂载", "variant": "emphasis", "labelDy": 24 },
+    { "id": "shell-to-panels", "from": "shell", "to": "panels" },
+    { "id": "shell-to-canvas", "from": "shell", "to": "canvas" },
+    { "id": "shell-to-core", "from": "shell", "to": "core", "label": "调用领域逻辑", "labelDy": 24 },
+    { "id": "core-to-ports", "from": "core", "to": "ports" },
+    { "id": "core-to-serialize", "from": "core", "to": "serialize" },
+    { "id": "core-to-adapters", "from": "core", "to": "adapters", "label": "定义端口契约", "labelDy": 24 },
+    { "id": "adapters-to-domio", "from": "adapters", "to": "domio" },
+    { "id": "adapters-to-preview", "from": "adapters", "to": "preview" },
+    { "id": "adapters-to-editframe", "from": "adapters", "to": "editframe", "label": "写入编辑帧", "labelDy": 24 },
+    { "id": "preview-to-prevframe", "from": "preview", "to": "prevframe", "label": "注入 srcdoc", "labelDy": 24 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "入口与外壳", "items": ["main.ts 挂载 #ep-app，createApp() 在 App.ts:886 构造", "App.ts 889 行、20 个字段，同时是事实上的装配根", "外壳直接 import 三个适配器，无 lint 禁令拦截"] },
+    { "dot": "emerald", "title": "领域层与端口", "items": ["ports.ts 22 个接口，core/** 零第三方 import", "序列化残留非空即抛 EP.IO.RESIDUE，阻断脏导出", "PasteSanitizer / DraftStorage / LocalFileGateway 无实现"] },
+    { "dot": "rose", "title": "契约偏差与验证", "items": ["契约要求 platforms/web/composition.ts，实际为空目录", "draft 两套 DraftRecord 字段互斥", "qa/metrics 门禁 losslessRate 恒 1，无判别力"] }
+  ]
+}

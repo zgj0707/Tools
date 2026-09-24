@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>周报草稿 · 本地文件</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #22303c;
+    background: #ffffff;
+    line-height: 1.7;
+  }
+  article { max-width: 760px; margin: 0 auto; padding: 48px 32px 96px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .meta { color: #8a94a0; font-size: 14px; margin-bottom: 32px; }
+  h2 { font-size: 19px; margin: 40px 0 12px; }
+  p { margin: 0 0 14px; }
+  .lead { font-size: 17px; color: #3d4c59; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { border-bottom: 1px solid #e6eaee; padding: 10px 8px; text-align: left; }
+  th { color: #6b7885; font-weight: 600; }
+  .warn { color: #c0392b; }
+  figure { margin: 24px 0 8px; }
+  figcaption { color: #8a94a0; font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<article>
+  <h1>本周进展与下周计划</h1>
+  <p class="meta">2026-09-22 · 内部草稿</p>
+
+  <p class="lead">这一段是开篇结论，通常需要反复改措辞——也是最常用到「改字」和「加粗」的地方。</p>
+
+  <h2>一、关键指标</h2>
+  <p>下表里的数字每周要更新，其中低于阈值的一项需要标红提醒。</p>
+  <table>
+    <tr><th>指标</th><th>本周</th><th>环比</th><th>状态</th></tr>
+    <tr><td>新增用户</td><td>12,480</td><td>+6.2%</td><td>正常</td></tr>
+    <tr><td>次日留存</td><td>41.3%</td><td>-1.8%</td><td class="warn">需关注</td></tr>
+    <tr><td>人均时长</td><td>23.5 分钟</td><td>+0.4%</td><td>正常</td></tr>
+  </table>
+
+  <h2>二、流程</h2>
+  <p>下面这张图是内联 SVG，节点与连线都应能被直接调整。</p>
+  <figure>
+    <svg width="600" height="150" viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a94a0"></path>
+        </marker>
+      </defs>
+      <rect x="10" y="50" width="120" height="48" rx="8" fill="#eef4ff" stroke="#8fb2ff"></rect>
+      <text x="70" y="79" text-anchor="middle" font-size="14" fill="#22303c">打开本地 html</text>
+      <line x1="130" y1="74" x2="212" y2="74" stroke="#8a94a0" stroke-width="1.5" marker-end="url(#arrow)"></line>
+      <rect x="214" y="50" width="120" height="48" rx="8" fill="#eef4ff" stroke="#8fb2ff"></rect>
+      <text x="274" y="79" text-anchor="middle" font-size="14" fill="#22303c">挂上工具栏</text>
+      <line x1="334" y1="74" x2="416" y2="74" stroke="#8a94a0" stroke-width="1.5" marker-end="url(#arrow)"></line>
+      <rect x="418" y="50" width="150" height="48" rx="8" fill="#eaf7ee" stroke="#8ed3a4"></rect>
+      <text x="493" y="79" text-anchor="middle" font-size="14" fill="#22303c">改完写回同一份文件</text>
+    </svg>
+    <figcaption>图 1 · 目标形态</figcaption>
+  </figure>
+
+  <h2>三、下周计划</h2>
+  <p>先把「改字 + 加粗/倾斜/下划线」这条链路走通，再接图形编辑。</p>
+</article>
+</body>
+</html>

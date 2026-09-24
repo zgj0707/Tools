@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>02 ShadowDOM 边界</title></head>
+<body>
+  <header class="site-header"><h1>站点标题</h1></header>
+  <!-- 模拟 Shadow DOM 宿主：内部内容由脚本注入，编辑器不可入内 -->
+  <div id="web-component-host" data-shadow-root="true">
+    <!-- 这里面是 shadowRoot 的投影占位 -->
+  </div>
+  <template id="shadow-template">
+    <style>:host{display:block}</style>
+    <span class="shadow-inner">影子内部文本（不可编辑）</span>
+  </template>
+  <section class="footer"><p>页脚 © 2026</p></section>
+</body>
+</html>

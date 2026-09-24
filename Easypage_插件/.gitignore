@@ -1,0 +1,48 @@
+node_modules
+dist
+# 插件产物（unpacked 扩展）。与 dist 同性质：构建物不入库。
+# 重建命令：npm run build:extension   （配置见 vite.extension.config.ts）
+dist-extension
+# 可粘贴进 HTML 的自包含编辑器构建物，由 npm run build:embed 重建。
+dist-embed
+dist-ssr
+
+# qa 度量报告：仅 baseline 与 latest 入库（验收基线的载体，必须可比对）
+qa/report/*.json
+!qa/report/metrics-baseline.json
+!qa/report/metrics-latest.json
+
+# Playwright 产物
+playwright-report
+test-results
+playwright/.cache
+
+# UI 重构对照取证的「产物」：两份单文件 html 是 vite 生成物，重建命令见
+# qa/probes/baseline-build.mjs（基线）与报告页 §三（改造后 = cp dist/index.html）。
+# 同一目录下的截图、机读清单与对照报告页是**证据本身**，正常入库。
+/qa/report/ui-refactor-p1/before.html
+/qa/report/ui-refactor-p1/after.html
+
+# 本地工作数据（项目记忆、会话记录，不入版本库）
+.workbuddy/
+
+# PoC 依赖（spikes 源码保留入库，仅忽略其 node_modules）
+spikes/**/node_modules/
+
+# 本地调试残留（防复发；根锚定避免误伤）
+/_patch.ps1
+/_trash/
+/out.txt
+/test_out.txt
+/probe-file.mjs
+/probe-shot.png
+/dbg2.png
+/.sbom-tmp.mjs
+# 早期版本的启动器把浏览器配置放在仓库根，现已改到 %LOCALAPPDATA%\EasyPage。
+# 保留这一条防复发：一旦有人改回去，不至于把几十 MB 的浏览器状态提交进去。
+/.easypage-profile/
+
+# 日志与系统
+*.log
+npm-debug.log*
+.DS_Store

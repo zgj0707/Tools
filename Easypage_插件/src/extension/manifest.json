@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "易页 EasyPage",
+  "version": "0.1.0",
+  "description": "在浏览器里编辑本地 HTML：改字、改颜色、加粗倾斜下划线；每次确认后覆盖当前原件。",
+  "content_scripts": [
+    {
+      "matches": ["file:///*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "易页 EasyPage"
+  }
+}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>选中与滚动 · 探针夹具</title>
+<style>
+  html, body { margin: 0; }
+  body { font: 16px/1.7 sans-serif; color: #1c2530; background: #fff; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 24px 200px; }
+  h1 { font-size: 24px; margin: 0 0 20px; }
+  h2 { font-size: 18px; margin: 32px 0 10px; }
+  p { margin: 0 0 12px; }
+  button { padding: 8px 16px; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border-bottom: 1px solid #dfe5ec; padding: 8px; text-align: left; }
+  .big { background: #f4f7fb; padding: 24px; border-radius: 8px; }
+  .tall { height: 900px; background: linear-gradient(#fff, #eef2f7); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">选中与滚动 · 探针夹具</h1>
+
+  <h2>一、页面自己的交互</h2>
+  <p>下面的按钮与链接属于页面本身。浏览模式下它们必须照常工作，编辑模式下必须被编辑器接管。</p>
+  <p><button id="btn">页面自己的按钮</button></p>
+  <p><a id="link" href="#jump">会跳转的锚链接</a></p>
+  <p id="jump">跳转落点</p>
+
+  <h2>二、归一：点行内元素应选中整段</h2>
+  <p id="para">这一段里有一个 <strong id="bold">加粗的词</strong> 和一个 <em id="ital">倾斜的词</em>，点它们都应选中整个段落。</p>
+
+  <h2>三、嵌套：停在最内层块</h2>
+  <div id="outer" class="big">
+    外层容器
+    <div id="inner">内层块。点这里应选中内层，而不是外层。</div>
+  </div>
+
+  <h2>四、表格</h2>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td id="cell">单元格内容</td><td>2</td></tr>
+  </table>
+
+  <h2>五、大容器：悬停只描边不填充</h2>
+  <section id="bigbox" class="big" style="min-height: 480px">这一块的面积超过视口的四分之一，悬停时应当只有描边、没有填充 —— 那是治「蓝色框盖住整页」的那条规则。</section>
+
+  <div class="tall"></div>
+  <p id="tail">页面底部。滚动到这里时，上方元素仍应被正确标注。</p>
+</main>
+<script>
+  // 页面自己的 handler：用来验证「浏览模式不被打扰 / 编辑模式接管」的分野。
+  document.getElementById('btn').addEventListener('click', function () {
+    document.body.setAttribute('data-probe-clicked', 'yes');
+  });
+</script>
+</body>
+</html>
