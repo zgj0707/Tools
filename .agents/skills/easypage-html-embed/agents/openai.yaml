@@ -1,0 +1,7 @@
+interface:
+  display_name: "易页 HTML 自编辑器嵌入"
+  short_description: "从 GitHub 获取最新代码块并保真嵌入 HTML"
+  default_prompt: "使用 $easypage-html-embed 将最新易页自编辑器嵌入指定 HTML 文件。"
+
+policy:
+  allow_implicit_invocation: true
