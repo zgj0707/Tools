@@ -97,17 +97,21 @@ export function overwriteMessage(
   outcome: string,
   detail?: string,
   hadScript?: boolean,
+  backupAvailable?: boolean,
 ): { text: string; tone: ToastTone } {
   const scriptNote = hadScript
-    ? '（页面含脚本：写回内容是脚本运行后的 DOM；下次打开时脚本会重新执行，动态生成内容可能再次变化）'
+    ? '（页面含脚本：动态内容若无法可靠对应回源码，保存会被阻止）'
     : '';
   switch (outcome) {
     case 'saved':
-      return { text: `已覆盖原件 ${detail ?? '页面'}${scriptNote}`, tone: 'info' };
+      return {
+        text: `已覆盖原件 ${detail ?? '页面'}${backupAvailable ? '，原件源码已尽量按局部补丁保留并存入本机恢复点' : ''}${scriptNote}`,
+        tone: 'info',
+      };
     case 'cancelled':
       return { text: '已取消保存，原件未改动', tone: 'info' };
     case 'dirty':
-      return { text: `为保护原件，已放弃保存：编辑器痕迹未清干净（${detail ?? ''}）`, tone: 'error' };
+      return { text: `为保护原件，已停止保存：${detail ?? '源码无法安全局部写回'}`, tone: 'error' };
     case 'unsupported':
       return { text: `当前环境不能直接覆盖原件：${detail ?? '浏览器未提供本地文件访问能力'}`, tone: 'error' };
     default:

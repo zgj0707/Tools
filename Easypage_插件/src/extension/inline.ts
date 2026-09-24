@@ -142,6 +142,8 @@ export function createInlineEditor(
 ): InlineEditor {
   let el: HTMLElement | null = null;
   let prevHtml = '';
+  let prevContentEditable: string | null = null;
+  let prevEditingMarker: string | null = null;
   let detach: (() => void) | null = null;
 
   function stop(): void {
@@ -158,6 +160,8 @@ export function createInlineEditor(
 
     el = node;
     prevHtml = node.innerHTML;
+    prevContentEditable = node.getAttribute('contenteditable');
+    prevEditingMarker = node.getAttribute(EP.EDITING_ATTR);
 
     node.setAttribute('contenteditable', 'true');
     node.setAttribute(EP.EDITING_ATTR, 'true');
@@ -204,8 +208,12 @@ export function createInlineEditor(
     if (!el) return null;
     const node = el;
     stop();
-    node.removeAttribute('contenteditable');
-    node.removeAttribute(EP.EDITING_ATTR);
+    if (prevContentEditable === null) node.removeAttribute('contenteditable');
+    else node.setAttribute('contenteditable', prevContentEditable);
+    if (prevEditingMarker === null) node.removeAttribute(EP.EDITING_ATTR);
+    else node.setAttribute(EP.EDITING_ATTR, prevEditingMarker);
+    prevContentEditable = null;
+    prevEditingMarker = null;
     el = null;
     onEditingChange?.(null);
     return node;

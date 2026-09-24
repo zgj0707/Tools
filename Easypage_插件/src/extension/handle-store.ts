@@ -63,6 +63,10 @@ export interface HandleStore {
   save(pathKey: string, handle: unknown): Promise<void>;
   /** 清除过期或不匹配的句柄；旧的内存 store 实现可以不提供。 */
   remove?(pathKey: string): Promise<void>;
+  /** 保存覆盖前的原始字节；失败返回 false，调用方必须在覆盖前阻断写入。 */
+  saveBackup?(pathKey: string, bytes: Uint8Array): Promise<boolean>;
+  /** 读取最近一次保存前的原件备份。 */
+  loadBackup?(pathKey: string): Promise<Uint8Array | null>;
 }
 
 /** 把文档地址归一成稳定的键：去掉 query / hash，保留完整路径。 */
@@ -149,6 +153,12 @@ export function createHandleStore(backend: HandleBackend | null): HandleStore {
       async remove() {
         /* 没有后端 —— 静默放弃 */
       },
+      async saveBackup() {
+        return false;
+      },
+      async loadBackup() {
+        return null;
+      },
     };
   }
   return {
@@ -171,6 +181,24 @@ export function createHandleStore(backend: HandleBackend | null): HandleStore {
         await backend.del(pathKey);
       } catch {
         /* 清不掉旧句柄也不影响本次保存 */
+      }
+    },
+    async saveBackup(pathKey, bytes) {
+      try {
+        await backend.put(`backup:${pathKey}`, bytes.slice());
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async loadBackup(pathKey) {
+      try {
+        const value = await backend.get(`backup:${pathKey}`);
+        if (value instanceof Uint8Array) return value;
+        if (value instanceof ArrayBuffer) return new Uint8Array(value);
+        return null;
+      } catch {
+        return null;
       }
     },
   };

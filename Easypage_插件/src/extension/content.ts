@@ -14,11 +14,13 @@ import {
   browserOpenFilePicker,
   rememberedFileForSave,
   saveOriginalDocument,
+  restoreOriginalBackup,
   suggestedNameFrom,
   type SaveResult,
 } from './save';
 import { isEditableHtml } from './inject-gate';
-import { createHandleStore, createIdbBackend } from './handle-store';
+import { createHandleStore, createIdbBackend, pathKeyOf } from './handle-store';
+import { captureSourceBaseline } from './preserve-source';
 import { HistoryStackImpl } from '../core/commands/HistoryStack';
 import { SetHtmlCommand } from '../core/commands/commands';
 import { EPX, type ExtensionMode } from './anchors';
@@ -41,6 +43,9 @@ function bootstrap(): void {
   if (document.querySelector(`[${EPX.HOST_MARKER_ATTR}="1"]`)) return;
 
   if (!isEditableHtmlDocument()) return;
+
+  // Kept before host mounting and before user edits; each successful save advances this baseline.
+  let sourceBaseline = captureSourceBaseline(document);
 
   let host: EpHost;
   try {
@@ -152,6 +157,9 @@ function bootstrap(): void {
     onSave: () => {
       void save();
     },
+    onRestore: () => {
+      void restoreBackup();
+    },
   });
 
   host.ui.appendChild(bar.element);
@@ -169,6 +177,7 @@ function bootstrap(): void {
   let rememberedFile: Awaited<ReturnType<typeof rememberedFileForSave>> = null;
   let fileReady = false;
   const rememberedFilePromise = rememberedFileForSave(store, location.href);
+  const savedBackupPromise = store.loadBackup?.(pathKeyOf(location.href)) ?? Promise.resolve(null);
   let saving = false;
 
   async function save(): Promise<void> {
@@ -188,6 +197,10 @@ function bootstrap(): void {
         handle: rememberedFile,
         store,
         confirm: (message) => window.confirm(message),
+        sourceBaseline,
+        onSaved: (nextBaseline) => {
+          sourceBaseline = nextBaseline;
+        },
       });
     } catch (err) {
       saving = false;
@@ -198,11 +211,39 @@ function bootstrap(): void {
 
     saving = false;
     if (result.handle) rememberedFile = result.handle;
-    if (result.forgetHandle) rememberedFile = null;
+    if (result.forgetHandle) {
+      rememberedFile = null;
+      bar.setBackupAvailable(false);
+    }
     bar.setSaveState({ available: saveAvailable });
+    if (result.backupAvailable) bar.setBackupAvailable(true);
 
-    const msg = overwriteMessage(result.outcome, result.detail, result.hadScript);
+    const msg = overwriteMessage(result.outcome, result.detail, result.hadScript, result.backupAvailable);
     toast.show(msg.text, msg.tone);
+  }
+
+  async function restoreBackup(): Promise<void> {
+    if (saving || !fileReady) return;
+    if (!rememberedFile) {
+      toast.show('恢复备份前，请先保存一次以重新选择原件', 'error');
+      return;
+    }
+    saving = true;
+    bar.setSaveState({ available: saveAvailable, busy: true });
+    let result: SaveResult;
+    try {
+      result = await restoreOriginalBackup(location.href, rememberedFile, store);
+    } catch (err) {
+      result = { outcome: 'failed', detail: err instanceof Error ? err.message : String(err) };
+    }
+    saving = false;
+    bar.setSaveState({ available: saveAvailable });
+    if (result.outcome === 'saved') {
+      toast.show('已恢复最近一次保存前的原文件，正在重新载入…', 'info');
+      window.setTimeout(() => location.reload(), 250);
+      return;
+    }
+    toast.show(result.outcome === 'cancelled' ? '已取消恢复，文件未改动' : `恢复失败：${result.detail ?? '未知原因'}`, result.outcome === 'cancelled' ? 'info' : 'error');
   }
 
   // 历史一变就刷新按钮可用性（push / undo / redo 都会触发）。
@@ -216,12 +257,12 @@ function bootstrap(): void {
     target: suggestedNameFrom(location.href),
   });
 
-  void rememberedFilePromise
-    .catch(() => null)
-    .then((file) => {
+  void Promise.all([rememberedFilePromise.catch(() => null), savedBackupPromise.catch(() => null)])
+    .then(([file, backup]) => {
       rememberedFile = file;
       saveAvailable = isLocalFile && (filePicker !== null || file !== null);
       fileReady = true;
+      bar.setBackupAvailable(file !== null && backup !== null);
       bar.setSaveState({ available: saveAvailable, reason: saveUnavailableReason });
     });
 

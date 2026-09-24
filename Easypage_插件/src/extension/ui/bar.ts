@@ -24,6 +24,7 @@ const ICONS = {
   palette: '<path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.2 0 1.8-.7 1.8-1.6 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h1.4a4.7 4.7 0 0 0 4.7-4.7c0-3.7-3.8-6.8-8.5-6.8Z"/><circle cx="8" cy="10" r="1.1"/><circle cx="12" cy="7.5" r="1.1"/><circle cx="16" cy="10" r="1.1"/>',
   undo: '<path d="M8 8H16a5 5 0 0 1 0 10h-6"/><path d="M11.5 4.5 8 8l3.5 3.5"/>',
   redo: '<path d="M16 8H8a5 5 0 0 0 0 10h6"/><path d="M12.5 4.5 16 8l-3.5 3.5"/>',
+  restore: '<path d="M3 11a9 9 0 1 1 2.7 6.4"/><path d="M3 4v7h7"/><path d="M12 7v5l3 2"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
 } as const;
 
@@ -72,6 +73,8 @@ export interface BarHandlers {
   onRedo(): void;
   /** 覆盖当前 HTML 原件；每次写入前都会要求用户确认。 */
   onSave(): void;
+  /** 用最近一次覆盖前的本机备份恢复原件。 */
+  onRestore?(): void;
 }
 
 export interface FormatState {
@@ -105,6 +108,7 @@ export interface Bar {
   setMode(mode: ExtensionMode): void;
   /** 写回链路的可用性（P0-5）。不可用时按钮禁用并把原因写进 title。 */
   setSaveState(state: SaveState): void;
+  setBackupAvailable(available: boolean): void;
   syncFormat(state: FormatState): void;
   syncHistory(state: HistoryState): void;
   closeColorPopover(): void;
@@ -152,6 +156,9 @@ export function buildBar(doc: Document, handlers: BarHandlers): Bar {
 
   const saveBtn = iconButton(doc, 'save', '覆盖原件', handlers.onSave);
   bar.appendChild(saveBtn);
+  const restoreBtn = iconButton(doc, 'restore', '恢复备份', () => handlers.onRestore?.(), '恢复最近一次保存前的原文件');
+  restoreBtn.disabled = true;
+  bar.appendChild(restoreBtn);
 
   bar.appendChild(sep());
 
@@ -223,6 +230,8 @@ export function buildBar(doc: Document, handlers: BarHandlers): Bar {
   bar.appendChild(hideBtn);
 
   const saveInfo: { target: string } = { target: '' };
+  let backupAvailable = false;
+  let saveBusy = false;
 
   function setMode(mode: ExtensionMode): void {
     const on = mode === 'edit';
@@ -237,7 +246,9 @@ export function buildBar(doc: Document, handlers: BarHandlers): Bar {
   function setSaveState(next: SaveState): void {
     if (next.target !== undefined) saveInfo.target = next.target;
     const busy = next.busy === true;
+    saveBusy = busy;
     saveBtn.disabled = !next.available || busy;
+    restoreBtn.disabled = !backupAvailable || busy;
     saveBtn.setAttribute('aria-busy', String(busy));
     saveBtn.dataset.busy = String(busy);
     // 文案统一由 `overwriteTitle` 出（含「不可用」那一档）。
@@ -248,6 +259,11 @@ export function buildBar(doc: Document, handlers: BarHandlers): Bar {
     } else {
       saveBtn.title = overwriteTitle({ available: true, target: saveInfo.target });
     }
+  }
+
+  function setBackupAvailable(available: boolean): void {
+    backupAvailable = available;
+    restoreBtn.disabled = !available || saveBusy;
   }
 
   function syncFormat(next: FormatState): void {
@@ -269,5 +285,5 @@ export function buildBar(doc: Document, handlers: BarHandlers): Bar {
     redoBtn.disabled = !next.canRedo;
   }
 
-  return { element: bar, setMode, setSaveState, syncFormat, syncHistory, closeColorPopover };
+  return { element: bar, setMode, setSaveState, setBackupAvailable, syncFormat, syncHistory, closeColorPopover };
 }

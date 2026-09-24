@@ -9,20 +9,16 @@
 // （= 已通过安全检查、走到「弹原生框」那一步，仅因无头环境没有对话框而中止）。
 // 证据：`qa/probes/file-protocol-capability.mjs`。
 //
-// ── 🔴 两条必须讲明的语义边界（不是缺陷，是形态决定的） ──
-// 1. **写回的是「运行时 DOM 的序列化」，不是「在原文件字节流上打补丁」。**
-//    做不到后者：页面里拿不到原文件的文本（见上）。后果有两条：
-//    · 属性顺序、引号风格、自闭合写法会被浏览器规范化 → 源码文本会变，结构不变；
-//    · **页面若含脚本，脚本运行后生成的 DOM 也会被一起写回**（mermaid 这类
-//      「有源码、渲染出图」的页面尤其明显：改动被固化进渲染结果，下次打开重新渲染可能覆盖它）。
-//      ⇒ 本模块把「页面含脚本」如实上报给调用方，由 UI 提示用户，不静默处理。
-// 2. **写回前必须清干净**（`07` · C4 铁律 8 升级版）：宿主 `#ep-root`、`contenteditable`、
-//    `data-ep-*`、临时 class 一个都不能进用户文件。清理后仍检出残留 ⇒ **拒绝写入**，
-//    宁可不保存，也不给用户一份带编辑器垃圾的文件。
+// ── 保存语义 ──
+// 正式工具条路径在 saveOriginalDocument 中读取原文件字节，以 parse5 源码位置只替换发生变化的
+// 文字/属性/局部元素内容；未修改区间原样保留。每次覆盖前先将原字节存入 IndexedDB 恢复点。
+// 无法把加载时 DOM 映射回原源码、页面在运行时变化过大、编码无法保真或恢复点写入失败时拒绝覆盖。
+// `buildSaveHtml` / `serializeDocument` 仍服务旧的另存路径和存量取证，不是工具条的主保存实现。
 
 import { collectResidue, stripEditorArtifacts } from '../core/serialize/stripArtifacts';
 import { EPX } from './anchors';
 import { ensureWritable, looksLikeFileHandle, pathKeyOf, type HandleStore } from './handle-store';
+import { captureSourceBaseline, decodeHtmlSource, encodeHtmlSource, patchHtmlSource } from './preserve-source';
 
 export type SaveOutcome =
   /** 已写入（或已交给浏览器的写入通道）。 */
@@ -31,7 +27,7 @@ export type SaveOutcome =
   | 'cancelled'
   /** 本页面不支持 FSA（非安全上下文 / 浏览器太老）。 */
   | 'unsupported'
-  /** 清理后仍有残留 ⇒ 拒绝写入。 */
+  /** 保存器无法安全清理或映射源码 ⇒ 拒绝写入。 */
   | 'dirty'
   /** 其他失败（磁盘错误、权限被拒…）。 */
   | 'failed';
@@ -40,7 +36,7 @@ export interface SaveResult {
   outcome: SaveOutcome;
   /** 已写入的文件名，或失败原因。给 UI 显示用。 */
   detail?: string;
-  /** 页面是否含（或曾含）脚本 —— 写回会把脚本运行后的 DOM 固化，需要提示用户。 */
+  /** 页面是否含业务脚本；动态变化无法安全映射到原源码时会阻止覆盖。 */
   hadScript?: boolean;
   /**
    * 这次**一个系统框都没弹** —— 用户完全没被打断。
@@ -68,16 +64,19 @@ export interface SaveResult {
   handle?: FileHandleLike;
   /** 已选定或复用的句柄暂时不能写入；调用方应清除该句柄并要求重新选择。 */
   forgetHandle?: boolean;
+  /** 写入前已在此浏览器保存了可恢复的原文件备份。 */
+  backupAvailable?: boolean;
 }
 
 /** FSA 的最小结构化类型（不依赖 TS 的 DOM lib 是否带 FileSystemFileHandle）。 */
 interface WritableLike {
-  write(data: string): Promise<void>;
+  write(data: string | Uint8Array): Promise<void>;
   close(): Promise<void>;
 }
 export interface FileHandleLike {
   readonly name: string;
   createWritable(): Promise<WritableLike>;
+  getFile?(): Promise<{ arrayBuffer(): Promise<ArrayBuffer> }>;
 }
 
 export interface SavePickerOptions {
@@ -398,9 +397,14 @@ export async function writeBack(
  * 就是用户看到的最终结果。混在一个函数里会让「该不该退」变得难以判断。
  */
 export async function writeDirect(html: string, handle: FileHandleLike): Promise<SaveResult> {
+  return writeDirectData(html, handle);
+}
+
+/** 原始字节也可直接写回，用于恢复点和保留 UTF-16 编码。 */
+export async function writeDirectData(data: string | Uint8Array, handle: FileHandleLike): Promise<SaveResult> {
   try {
     const writable = await handle.createWritable();
-    await writable.write(html);
+    await writable.write(data);
     await writable.close();
     return { outcome: 'saved', detail: handle.name, direct: true };
   } catch (err) {
@@ -410,6 +414,12 @@ export async function writeDirect(html: string, handle: FileHandleLike): Promise
     }
     return { outcome: 'failed', detail: errName || String(err) };
   }
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 /**
@@ -430,6 +440,10 @@ export async function saveOriginalDocument(
     handle?: FileHandleLike | null;
     store?: HandleStore | null;
     confirm?: ConfirmOverwrite;
+    /** 编辑开始时捕获的文档；传入后启用源码局部补丁，无法映射时拒绝覆盖。 */
+    sourceBaseline?: Document;
+    /** 保存成功后更新下一轮局部补丁的基线。 */
+    onSaved?: (baseline: Document) => void;
   },
 ): Promise<SaveResult> {
   // A web URL cannot be overwritten through a local FileSystemFileHandle. Requiring a
@@ -445,16 +459,23 @@ export async function saveOriginalDocument(
     return { outcome: 'unsupported', detail: '当前页面地址不是可覆盖的本地 HTML 文件' };
   }
 
-  const built = buildSaveHtml(doc);
-  const blocked = residueBlocker(built.residue);
-  if (blocked) return { outcome: 'dirty', detail: blocked, hadScript: built.hadScript };
+  const hadScript = Array.from(doc.scripts).some(
+    (script) => script.getAttribute('data-easypage-self-editor') !== '1',
+  );
+  let output: string | Uint8Array = '';
+  if (!io.sourceBaseline) {
+    const built = buildSaveHtml(doc);
+    const blocked = residueBlocker(built.residue);
+    if (blocked) return { outcome: 'dirty', detail: blocked, hadScript };
+    output = built.html;
+  }
 
   const name = suggestedNameFrom(href);
   let handle = io.handle && looksLikeFileHandle(io.handle) && io.handle.name === name ? io.handle : null;
   let selected = false;
 
   if (!handle) {
-    if (!io.picker) return { outcome: 'unsupported', detail: '浏览器未提供本地文件选择能力', hadScript: built.hadScript };
+    if (!io.picker) return { outcome: 'unsupported', detail: '浏览器未提供本地文件选择能力', hadScript };
 
     // 有意先启动选择器，再 await：Chrome 要求文件选择器由用户手势直接触发。
     let pending: Promise<FileHandleLike[]>;
@@ -465,30 +486,30 @@ export async function saveOriginalDocument(
         types: [{ description: 'HTML 原件', accept: { 'text/html': ['.html', '.htm'] } }],
       });
     } catch (err) {
-      return { outcome: 'failed', detail: (err as { name?: string } | null)?.name ?? String(err), hadScript: built.hadScript };
+      return { outcome: 'failed', detail: (err as { name?: string } | null)?.name ?? String(err), hadScript };
     }
 
     try {
       const handles = await pending;
       handle = handles[0] ?? null;
-      if (!handle) return { outcome: 'cancelled', hadScript: built.hadScript };
+      if (!handle) return { outcome: 'cancelled', hadScript };
       selected = true;
     } catch (err) {
       const errName = (err as { name?: string } | null)?.name ?? '';
-      if (errName === 'AbortError') return { outcome: 'cancelled', hadScript: built.hadScript };
+      if (errName === 'AbortError') return { outcome: 'cancelled', hadScript };
       if (errName === 'SecurityError' || errName === 'NotAllowedError') {
-        return { outcome: 'unsupported', detail: errName, hadScript: built.hadScript };
+        return { outcome: 'unsupported', detail: errName, hadScript };
       }
-      return { outcome: 'failed', detail: errName || String(err), hadScript: built.hadScript };
+      return { outcome: 'failed', detail: errName || String(err), hadScript };
     }
   }
 
-  if (!handle) return { outcome: 'failed', detail: '没有取得原件文件句柄', hadScript: built.hadScript };
+  if (!handle) return { outcome: 'failed', detail: '没有取得原件文件句柄', hadScript };
   if (handle.name !== name) {
     return {
       outcome: 'failed',
       detail: `选中的文件是「${handle.name}」，当前原件应为「${name}」。请重新选择原件。`,
-      hadScript: built.hadScript,
+      hadScript,
     };
   }
 
@@ -496,7 +517,7 @@ export async function saveOriginalDocument(
     return {
       outcome: 'failed',
       detail: '尚未获得原件写入权限。请再次点击保存，并在 Chrome 提示中允许写入。',
-      hadScript: built.hadScript,
+      hadScript,
       // Keep the just-selected handle for this tab. Chrome may require the next
       // explicit Save click to present its write-permission prompt with fresh activation.
       handle,
@@ -504,13 +525,56 @@ export async function saveOriginalDocument(
     };
   }
 
+  let backupBytes: Uint8Array | null = null;
+  if (io.sourceBaseline) {
+    if (typeof handle.getFile !== 'function') {
+      return {
+        outcome: 'failed',
+        detail: 'Chrome 未提供读取原件能力；为避免整页重排，已停止覆盖',
+        hadScript,
+        handle,
+      };
+    }
+    try {
+      backupBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+    } catch (err) {
+      return {
+        outcome: 'failed',
+        detail: `读取原件失败，未覆盖：${(err as { name?: string } | null)?.name ?? String(err)}`,
+        hadScript,
+        handle,
+      };
+    }
+    const decoded = decodeHtmlSource(backupBytes, doc.characterSet);
+    if (!decoded.ok) {
+      return { outcome: 'dirty', detail: decoded.reason, hadScript, handle };
+    }
+    const patched = patchHtmlSource(decoded.value.text, io.sourceBaseline, doc);
+    if (!patched.ok) {
+      return { outcome: 'dirty', detail: patched.reason, hadScript, handle };
+    }
+    try {
+      output = encodeHtmlSource(patched.html, decoded.value.encoding, decoded.value.bom);
+    } catch {
+      return {
+        outcome: 'dirty',
+        detail: '编辑内容无法用原文件编码表示，或包含无效 Unicode 字符；请先将 HTML 转为 UTF-8 后再编辑',
+        hadScript,
+        handle,
+      };
+    }
+  }
+
   const sourcePath = `${directoryOf(href)}${name}`;
-  const scriptNote = built.hadScript
-    ? '\n\n注意：页面含脚本，保存内容会包含脚本运行后的 DOM 结构。'
+  const scriptNote = hadScript
+    ? '\n\n页面含脚本；动态变化只有能可靠映射回原源码时才会写入。'
     : '';
   const message = [
     `即将覆盖当前 HTML 原件：\n${sourcePath}`,
     '请确认文件选择器中选中的是这个位置的原件。Chrome 不会向插件提供所选文件夹路径。',
+    io.sourceBaseline
+      ? '保存会只替换已编辑的源码片段，并在本机留存当前原件作为恢复点。'
+      : '',
     scriptNote,
     '\n确认覆盖吗？',
   ].filter(Boolean).join('\n');
@@ -522,7 +586,7 @@ export async function saveOriginalDocument(
     return {
       outcome: 'failed',
       detail: `无法显示覆盖确认：${(err as { name?: string } | null)?.name ?? String(err)}`,
-      hadScript: built.hadScript,
+      hadScript,
       handle,
     };
   }
@@ -530,23 +594,91 @@ export async function saveOriginalDocument(
     return {
       outcome: 'cancelled',
       detail: '用户取消覆盖',
-      hadScript: built.hadScript,
+      hadScript,
       handle,
     };
+  }
+
+  // The user may leave the confirmation open while another program changes the file.
+  // Re-read immediately before backup/write and refuse to overwrite a newer version.
+  if (io.sourceBaseline && backupBytes && handle.getFile) {
+    try {
+      const latestBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+      if (!sameBytes(backupBytes, latestBytes)) {
+        return {
+          outcome: 'failed',
+          detail: '确认期间原件已被其他程序修改；为避免覆盖新内容，请重新加载页面后再编辑',
+          hadScript,
+          handle,
+        };
+      }
+    } catch (err) {
+      return {
+        outcome: 'failed',
+        detail: `确认后无法再次读取原件，未覆盖：${(err as { name?: string } | null)?.name ?? String(err)}`,
+        hadScript,
+        handle,
+      };
+    }
   }
 
   // 只有用户确认了所选文件对应来源位置后，才记住新句柄供下一次保存复用。
   if (selected) await io.store?.save(pathKeyOf(href), handle);
 
-  const result = await writeDirect(built.html, handle);
+  // Backup persistence is required for source-preserving saves. If it fails, keep the original
+  // file intact rather than silently proceeding without the promised recovery point.
+  let backupAvailable = false;
+  if (io.sourceBaseline && backupBytes) {
+    backupAvailable = await (io.store?.saveBackup?.(pathKeyOf(href), backupBytes) ?? Promise.resolve(false));
+    if (!backupAvailable) {
+      return {
+        outcome: 'failed',
+        detail: '本机恢复备份保存失败，为保护原件已停止覆盖',
+        hadScript,
+        handle,
+      };
+    }
+  }
+
+  const result = await writeDirectData(output, handle);
   if (result.outcome !== 'saved') {
     const forgetHandle = result.detail === 'SecurityError' || result.detail === 'NotAllowedError';
     if (forgetHandle) await io.store?.remove?.(pathKeyOf(href));
-    return { ...result, hadScript: built.hadScript, handle: forgetHandle ? undefined : handle, forgetHandle };
+    return {
+      ...result,
+      hadScript,
+      backupAvailable,
+      handle: forgetHandle ? undefined : handle,
+      forgetHandle,
+    };
   }
 
   await io.store?.save(pathKeyOf(href), handle);
-  return { ...result, hadScript: built.hadScript, handle };
+  io.onSaved?.(captureSourceBaseline(doc));
+  return { ...result, hadScript, handle, backupAvailable };
+}
+
+/** Restore the last exact byte-for-byte pre-save copy kept in this browser. */
+export async function restoreOriginalBackup(
+  href: string,
+  handle: FileHandleLike,
+  store: HandleStore,
+  confirm: ConfirmOverwrite = (message) => window.confirm(message),
+): Promise<SaveResult> {
+  const bytes = await store.loadBackup?.(pathKeyOf(href));
+  if (!bytes) return { outcome: 'failed', detail: '没有找到本机保存的原件恢复点' };
+  if (!(await ensureWritable(handle))) {
+    return { outcome: 'failed', detail: '没有获得原件写入权限，请再次操作并允许写入', handle };
+  }
+  let yes = false;
+  try {
+    yes = confirm(`将用本机恢复点覆盖当前文件「${handle.name}」。当前页面的未保存编辑也会随重载丢失。\n\n确认恢复吗？`);
+  } catch (err) {
+    return { outcome: 'failed', detail: `无法显示恢复确认：${(err as { name?: string } | null)?.name ?? String(err)}`, handle };
+  }
+  if (!yes) return { outcome: 'cancelled', detail: '已取消恢复', handle, backupAvailable: true };
+  const result = await writeDirectData(bytes, handle);
+  return { ...result, backupAvailable: true, handle };
 }
 
 /** 恢复与当前 URL 同名的已记住原件；形状不符或文件名变了就丢弃旧句柄。 */
