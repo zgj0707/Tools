@@ -2,10 +2,8 @@
 
 一个把 TypeSafe **Jev**（System One 结构化语义判断模型）接入 WorkBuddy 的 Skill + MCP 组合包。用于对给定状态做**类型化判断**：分类（choice）、评分（score）、是非（noul），返回带概率/置信度的可分支、可排序结果。
 
-> 适用：Agent 需要"对一个状态给出一个可比较、可排序的结构化结论"时，把这件事交给 Jev，而不是让宿主模型凭感觉猜。
-
+> 适用：需要批量进行低输出操作；单纯体验新概念模型；
 ---
-
 ## 功能简介
 
 | 能力 | 说明 |
@@ -21,7 +19,7 @@
 - Python 3.12+
 - [`uv`](https://docs.astral.sh/uv/)（启动 MCP server 用）
 - TypeSafe API key（`TYPESAFE_API_KEY`）
-- WorkBuddy（或任何支持 MCP 的宿主）用于加载 server
+- WorkBuddy（或任何支持 MCP 的宿主）、Codex用于加载 server
 
 ---
 
@@ -46,7 +44,7 @@ mkdir -p ~/.workbuddy/typesafe-jev-server
 uv sync --locked        # 在 server 目录内执行，安装 mcp 依赖
 ```
 
-### 3. 配置 MCP 到 WorkBuddy
+### 3. 配置 MCP 到 WorkBuddy（实测Codex没有这步）
 
 WorkBuddy 的 MCP 配置入口：**侧边栏 → 插件 → 右上角「MCP 服务器」→「配置 MCP」**，在编辑器里粘贴以下 JSON 并保存：
 
@@ -96,10 +94,10 @@ MCP server 从 `TYPESAFE_API_KEY` 读取 TypeSafe key，两个来源二选一：
 | **环境变量** | 设置用户级环境变量 `TYPESAFE_API_KEY` | 命令行 / 服务器 |
 | **Windows 注册表** | 在 `HKCU\Environment` 下建字符串值 `TYPESAFE_API_KEY` | WorkBuddy 桌面端（MCP 子进程读取） |
 
-> 桌面端优先用**注册表**：MCP 子进程可在不把密钥写进配置文件/Git 历史的情况下读到。
-> 密钥不落盘、不进配置、不进 Git。
+> 桌面端优先用**注册表**：MCP 子进程可在不把密钥写进配置文件/Git 历史的情况下读到；但实际上配置环境变量更简单：win+s搜索环境变量、在用户变量处新建一个键为TYPESAFE_API_KEY、值为key的变量即可；
+> 强烈建议不要把apikey直接交给agent，虽然确实很快，但是有泄露风险。
 
-### 调用方式（给宿主模型）
+### 调用方式（人类不用看）
 
 `jev_evaluate` 参数：
 
@@ -132,29 +130,26 @@ MCP server 从 `TYPESAFE_API_KEY` 读取 TypeSafe key，两个来源二选一：
 
 ## 常见问题
 
-### Q1：在 WorkBuddy 的「自定义连接器」里找不到 typesafe-jev？
-**入口不对。** MCP 不是 connector 管理页。正确入口是 **侧边栏 → 插件 → 右上角「MCP 服务器」→「配置 MCP」**。配置保存后才会加载。
-
-### Q2：配置保存了，但对话里调不到 `jev_evaluate`？
+### Q1：配置保存了，但对话里调不到 `jev_evaluate`？
 确认两点：
 1. 状态灯是否为 🟢 绿色（🔴 = server 启动失败）。
 2. 是否**重启过 WorkBuddy**。改 MCP 配置后常需重启才在运行时生效。
 
-### Q3：报 "TypeSafe API key is not configured"？
+### Q2：报 "TypeSafe API key is not configured"？
 `TYPESAFE_API_KEY` 没被 MCP 子进程读到。桌面端请在 `HKCU\Environment` 注册表设置，**不要只设当前终端会话的环境变量**（MCP 子进程不一定继承）。
 
-### Q4：报 "TypeSafe rejected the API key (401)"？
+### Q3：报 "TypeSafe rejected the API key (401)"？
 Key 本身无效或过期。去 TypeSafe 控制台重新生成 key，更新注册表后重启 WorkBuddy。
 
-### Q5：MCP server 能启动，但调用卡住/超时？
+### Q4：MCP server 能启动，但调用卡住/超时？
 - 网络访问 `api.typesafe.ai` 是否通畅（可能需要代理）。
 - server 内置 2 次重试 + 60s 超时，429/529 会退避重试；持续超时先排查网络。
 
-### Q6：为什么加了 `cwd` 字段却报错？
+### Q5：为什么加了 `cwd` 字段却报错？
 WorkBuddy 的 MCP 解析器可能不认 `cwd` 字段。**不要加 `cwd`**，直接在 `args` 里用 `server.py` 的**绝对路径**启动（见上文配置 JSON）。
 
-### Q7：这个 skill 和直接问模型有什么区别？
-Jev 是**独立的、类型化的、可比较的判断引擎**，返回概率/置信度，适合需要跨样本排序、分支决策的场景。宿主模型负责喂状态、解释结果、决定下一步。确定性规则请留在代码。
+### Q6：这个 skill 和直接问模型有什么区别？
+Jev 是**独立的、类型化的、可比较的判断引擎**，返回概率/置信度，适合需要跨样本排序、分支决策的场景。人工编写问题实际上也不能完全使用自然语言，使用宿主模型可以用英文、更方便的批量编写问题。
 
 ---
 
