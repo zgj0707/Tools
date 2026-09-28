@@ -1,0 +1,159 @@
+<script data-easypage-self-editor="1">
+(()=>{
+"use strict";
+const HOST_ID = "epx-simple-host";
+const DB_NAME = "easypage";
+const STORE_NAME = "handles";
+
+function pathKey(href){try{const u=new URL(href);return u.protocol+"//"+u.host+u.pathname;}catch{return href;}}
+
+function openDb(){return new Promise((res,rej)=>{const rq=indexedDB.open(DB_NAME,1);rq.onupgradeneeded=()=>{if(!rq.result.objectStoreNames.contains(STORE_NAME))rq.result.createObjectStore(STORE_NAME);};rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);});}
+async function idbGet(k){try{const db=await openDb();try{return await new Promise((res,rej)=>{const tx=db.transaction(STORE_NAME,"readonly");const r=tx.objectStore(STORE_NAME).get(k);tx.oncomplete=()=>res(r.result);tx.onerror=()=>rej(tx.error);});}finally{db.close();}}catch{return null;}}
+async function idbPut(k,v){try{const db=await openDb();try{await new Promise((res,rej)=>{const tx=db.transaction(STORE_NAME,"readwrite");tx.objectStore(STORE_NAME).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}finally{db.close();}}catch{}}
+
+if(!document.body || document.getElementById(HOST_ID)) return;
+
+const host = document.createElement("div");
+host.id = HOST_ID;
+host.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;z-index:2147483647";
+document.body.appendChild(host);
+const root = host.attachShadow({ mode: "open" });
+root.innerHTML =
+'<style>'+
+'bar{position:fixed;top:12px;right:12px;z-index:2147483647;display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid #e0e0e0;border-radius:999px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.14);font:13px/1 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:#333;user-select:none}'+
+'bar button{height:26px;padding:0 10px;border:1px solid transparent;border-radius:6px;background:none;color:#555;font:inherit;cursor:pointer}'+
+'bar button:hover{background:#f1f1f1}'+
+'bar button.on{background:#e8f0ff;color:#1a56db}'+
+'bar .sep{width:1px;height:22px;background:#e0e0e0}'+
+'bar .state{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#999;font-size:12px}'+
+'toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);padding:8px 14px;border-radius:8px;background:#333;color:#fff;font:12px/1.4 -apple-system,"Microsoft YaHei",sans-serif;opacity:0;transition:opacity .2s;z-index:2147483647;pointer-events:none}'+
+'</style>'+
+'<bar>'+
+'<button data-act="mode">编辑模式</button>'+
+'<span class="sep"></span>'+
+'<button data-act="bold" title="加粗 Ctrl+B"><b>B</b></button>'+
+'<button data-act="italic" title="斜体 Ctrl+I"><i>I</i></button>'+
+'<button data-act="underline" title="下划线 Ctrl+U"><u>U</u></button>'+
+'<span class="sep"></span>'+
+'<button data-act="save" title="保存 Ctrl+S">保存</button>'+
+'<span class="state" data-role="state">就绪</span>'+
+'</bar>'+
+'<toast data-role="toast"></toast>';
+
+const bar = root.querySelector("bar");
+const stateEl = root.querySelector('[data-role="state"]');
+const toastEl = root.querySelector('[data-role="toast"]');
+const modeBtn = root.querySelector('[data-act="mode"]');
+
+let editing = false;
+let handle = null;
+let saving = false;
+let toastTimer = null;
+
+function toast(msg, isErr){
+  toastEl.textContent = msg;
+  toastEl.style.background = isErr ? "#c0392b" : "#333";
+  toastEl.style.opacity = "1";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.style.opacity = "0"; }, 2600);
+}
+
+function setMode(on){
+  editing = on;
+  document.body.contentEditable = on ? "true" : "inherit";
+  modeBtn.classList.toggle("on", on);
+  modeBtn.textContent = on ? "完成编辑" : "编辑模式";
+  stateEl.textContent = on ? "编辑中… Ctrl+S 保存" : (handle ? "已记住原件" : "就绪");
+}
+
+function fmt(cmd){
+  if(!editing) { toast("先进入编辑模式", true); return; }
+  document.execCommand(cmd);
+}
+
+function buildHtml(){
+  const clone = document.cloneNode(true);
+  clone.getElementById(HOST_ID)?.remove();
+  if(clone.body) clone.body.removeAttribute("contenteditable");
+  const dt = document.doctype ? "<!DOCTYPE " + document.doctype.name + ">\n" : "";
+  return dt + clone.documentElement.outerHTML;
+}
+
+async function ensureWritable(h){
+  if(!h || typeof h.queryPermission !== "function") return true;
+  try{
+    const q = await h.queryPermission({ mode: "readwrite" });
+    if(q === "granted") return true;
+    if(typeof h.requestPermission !== "function") return false;
+    const r = await h.requestPermission({ mode: "readwrite" });
+    return r === "granted";
+  }catch{ return false; }
+}
+
+async function save(){
+  if(saving) return;
+  saving = true;
+  if(location.protocol !== "file:"){
+    toast("请在 Chrome 中直接打开本地 HTML 文件后保存", true);
+    saving = false;
+    return;
+  }
+  try{
+    let h = handle;
+    if(h && !(await ensureWritable(h))){ h = null; handle = null; }
+    if(!h){
+      if(typeof window.showSaveFilePicker !== "function"){
+        toast("浏览器不支持本地文件保存", true);
+        saving = false;
+        return;
+      }
+      let name = "page.html";
+      try{
+        const p = decodeURIComponent(new URL(location.href).pathname).split("/").pop();
+        if(p) name = /\.html?$/i.test(p) ? p : p + ".html";
+      }catch{}
+      h = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: "HTML 文件", accept: { "text/html": [".html", ".htm"] } }]
+      });
+      handle = h;
+      void idbPut(pathKey(location.href), h);
+    }
+    const html = buildHtml();
+    const w = await h.createWritable();
+    await w.write(html);
+    await w.close();
+    stateEl.textContent = "已保存 " + new Date().toTimeString().slice(0, 5);
+    toast("已保存 " + new Date().toTimeString().slice(0, 5));
+  }catch(e){
+    const n = e && e.name;
+    if(n === "AbortError"){ toast("已取消保存"); }
+    else if(n === "SecurityError" || n === "NotAllowedError"){
+      handle = null;
+      toast("未获得写入权限，请再次 Ctrl+S 并在提示中允许", true);
+    }
+    else{ toast("保存失败：" + (e && e.message ? e.message : String(e)), true); }
+  }finally{ saving = false; }
+}
+
+modeBtn.onclick = () => setMode(!editing);
+root.querySelector('[data-act="bold"]').onclick = () => fmt("bold");
+root.querySelector('[data-act="italic"]').onclick = () => fmt("italic");
+root.querySelector('[data-act="underline"]').onclick = () => fmt("underline");
+root.querySelector('[data-act="save"]').onclick = () => void save();
+
+document.addEventListener("keydown", (e) => {
+  if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === "s" || e.key === "S")){
+    e.preventDefault();
+    void save();
+  }
+}, { capture: true });
+
+void idbGet(pathKey(location.href)).then((h) => {
+  if(h && typeof h.createWritable === "function"){
+    handle = h;
+    stateEl.textContent = "已记住原件";
+  }
+});
+})();
+</script>
