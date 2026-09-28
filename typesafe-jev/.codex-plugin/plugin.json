@@ -1,0 +1,20 @@
+{
+  "name": "typesafe-jev",
+  "version": "0.1.0",
+  "description": "General TypeSafe Jev tool and Skill for structured decisions in Codex and ChatGPT.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Typesafe Jev",
+    "shortDescription": "Use Jev for typed decisions in your agent workflows.",
+    "longDescription": "Adds a local MCP tool for TypeSafe Jev and a general Skill for forming and composing structured judgments.",
+    "developerName": "Personal",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use $typesafe-jev when this task benefits from a focused typed judgment."
+  },
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json"
+}

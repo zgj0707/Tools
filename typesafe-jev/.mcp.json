@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "typesafe-jev": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        ".",
+        "--locked",
+        "python",
+        "server.py"
+      ],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

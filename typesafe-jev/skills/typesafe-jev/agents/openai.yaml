@@ -1,0 +1,7 @@
+interface:
+  display_name: "TypeSafe Jev"
+  short_description: "Make structured judgments with Jev through MCP"
+  default_prompt: "Use $typesafe-jev to make a focused structured judgment about this task."
+
+policy:
+  allow_implicit_invocation: true
