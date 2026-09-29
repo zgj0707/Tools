@@ -21,6 +21,9 @@ const root = host.attachShadow({ mode: "open" });
 root.innerHTML =
 '<style>'+
 'bar{position:fixed;top:12px;right:12px;z-index:2147483647;display:flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid #e0e0e0;border-radius:999px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.14);font:13px/1 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:#333;user-select:none}'+
+'bar.dragging{opacity:.85;cursor:grabbing}'+
+'bar .grip{padding:0 2px;color:#bbb;font-size:14px;line-height:1;cursor:grab;user-select:none}'+
+'bar .grip:hover{color:#666}'+
 'bar button{height:26px;padding:0 10px;border:1px solid transparent;border-radius:6px;background:none;color:#555;font:inherit;cursor:pointer}'+
 'bar button:hover{background:#f1f1f1}'+
 'bar button.on{background:#e8f0ff;color:#1a56db}'+
@@ -29,6 +32,7 @@ root.innerHTML =
 'toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);padding:8px 14px;border-radius:8px;background:#333;color:#fff;font:12px/1.4 -apple-system,"Microsoft YaHei",sans-serif;opacity:0;transition:opacity .2s;z-index:2147483647;pointer-events:none}'+
 '</style>'+
 '<bar>'+
+'<span class="grip" title="按住拖动">≡</span>'+
 '<button data-act="mode">编辑模式</button>'+
 '<span class="sep"></span>'+
 '<button data-act="bold" title="加粗 Ctrl+B"><b>B</b></button>'+
@@ -70,6 +74,44 @@ function fmt(cmd){
   if(!editing) { toast("先进入编辑模式", true); return; }
   document.execCommand(cmd);
 }
+
+// ── 工具条拖动：按住抓柄（或工具条空白处）即可拖动；按钮只响应点击 ──
+const POS_KEY = "epx-bar-pos:" + pathKey(location.href);
+let drag = null;
+function savePos(x, y){ try{ localStorage.setItem(POS_KEY, JSON.stringify({ x: x, y: y })); }catch{} }
+function loadPos(){
+  try{
+    const raw = localStorage.getItem(POS_KEY);
+    if(!raw) return;
+    const p = JSON.parse(raw);
+    if(typeof p.x === "number" && typeof p.y === "number"){
+      bar.style.left = p.x + "px";
+      bar.style.top = p.y + "px";
+      bar.style.right = "auto";
+    }
+  }catch{}
+}
+bar.addEventListener("pointerdown", (e) => {
+  if(e.target.closest("button")) return;
+  const r = bar.getBoundingClientRect();
+  drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+  bar.setPointerCapture(e.pointerId);
+  bar.classList.add("dragging");
+  e.preventDefault();
+});
+bar.addEventListener("pointermove", (e) => {
+  if(!drag) return;
+  e.preventDefault();
+  const x = Math.max(4, Math.min(innerWidth - drag.w - 4, e.clientX - drag.dx));
+  const y = Math.max(4, Math.min(innerHeight - drag.h - 4, e.clientY - drag.dy));
+  bar.style.left = x + "px";
+  bar.style.top = y + "px";
+  bar.style.right = "auto";
+  savePos(x, y);
+});
+function endDrag(){ if(drag){ drag = null; bar.classList.remove("dragging"); } }
+bar.addEventListener("pointerup", endDrag);
+bar.addEventListener("pointercancel", endDrag);
 
 function buildHtml(){
   const clone = document.cloneNode(true);
@@ -155,5 +197,7 @@ void idbGet(pathKey(location.href)).then((h) => {
     stateEl.textContent = "已记住原件";
   }
 });
+
+loadPos();
 })();
 </script>
