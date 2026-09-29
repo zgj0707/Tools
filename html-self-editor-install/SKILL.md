@@ -24,6 +24,20 @@ description: 把「HTML 自编辑插件」安装进任意本地 HTML 文件，�
 3. 在目标 HTML 的 `</body>` 标签**之前**插入模板内容（保持与源文件一致的换行风格）。
 4. 若目标 HTML 已存在 `<script data-easypage-self-editor="1">` 块 → **删除旧块，替换为新模板**（覆盖更新，避免重复注入两个 host）。
 
+### 🔴 必须用二进制读写，否则会翻转整个文件的行尾
+`open(p, "w")` 在 Windows 默认把 `\n` 写成 `\r\n`。若目标文件是 LF-only（很常见），一次安装/升级就会把**全文件每一行**都改掉，diff 满屏飘红、看不出真实改动。
+
+```python
+tb  = open(tpl_path, "rb").read()          # 模板
+raw = open(target,   "rb").read()          # 目标
+html = raw.decode("utf-8")
+i = html.find('<script data-easypage-self-editor="1">')
+j = html.find('</script>', i) + len('</script>')
+new = html[:i] + tb.decode('utf-8').rstrip('\n') + html[j:]
+open(target, "wb").write(new.encode("utf-8"))
+```
+校验：改前后各统计 `b.count(b"\r\n")` 与裸 `\n` 数，两者应保持一致；`diff` 应只剩**新增行**，删除/修改行为 0。
+
 ## 安装后校验（必须执行）
 装完用 Grep 在目标文件确认：
 - [ ] 恰好 1 处 `data-easypage-self-editor="1"`
