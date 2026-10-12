@@ -1,0 +1,11 @@
+# 虚拟环境
+.venv/
+venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 输出目录
+拉片帧图-*/
+output/
