@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 HTML_FILE = os.path.join(HERE, "ui.html")
 BASE_PORT = 8765
 MAX_LOGS = 500
+APP_VERSION = "2.0.0"        # 与 ui.html 底部展示一致；启动时校验已有实例是否同版本
 APP_WINDOW_SIZE = "440,540"  # --app 独立窗口尺寸
 # 独立 Edge 用户目录：强制 --app/--window-size 生效（避免并入已在运行的浏览器会话）
 EDGE_PROFILE = os.path.join(os.environ.get("LOCALAPPDATA") or HERE, "拉片辅助-edge")
@@ -258,7 +259,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/state":
             self._send_json(_build_state())
         elif path == "/api/ping":
-            self._send_json({"ok": True})
+            self._send_json({"ok": True, "version": APP_VERSION})
         elif path == "/api/quit":
             threading.Thread(target=self.server.shutdown, daemon=True).start()
             self._send_json({"ok": True})
@@ -414,7 +415,10 @@ def _pick_port():
 
 
 def _existing_instance():
-    """若默认端口已有本服务在跑，返回其地址（供复用，避免重复实例）。"""
+    """若默认端口已有【同版本】本服务在跑，返回其地址（供复用，避免重复实例）。
+
+    版本不匹配（如代码已更新而旧服务未退出）时不复用，避免跑到旧逻辑。
+    """
     try:
         with socket.create_connection(("127.0.0.1", BASE_PORT), timeout=0.6) as s:
             s.sendall(b"GET /api/ping HTTP/1.0\r\n\r\n")
@@ -425,7 +429,11 @@ def _existing_instance():
                 if not chunk:
                     break
                 data += chunk
-        return b"200" in data and b'"ok"' in data
+        body = data.split(b"\r\n\r\n", 1)[-1]
+        try:
+            return json.loads(body).get("version") == APP_VERSION
+        except Exception:
+            return False
     except OSError:
         return False
 
