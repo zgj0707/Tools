@@ -9,3 +9,6 @@ __pycache__/
 # 输出目录
 拉片帧图-*/
 output/
+
+# 用户设置（运行后自动生成）
+config.json

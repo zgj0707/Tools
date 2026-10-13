@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>视频拉片 · 镜头检测抽帧</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232563eb'/%3E%3Cpath d='M9 9h6v6H9z' fill='white'/%3E%3Crect x='9' y='9' width='6' height='6' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --border: #e5e7eb;
+    --text: #1f2937; --muted: #6b7280; --faint: #9ca3af;
+    --accent: #2563eb; --accent-hover: #1d4ed8; --accent-weak: #dbeafe;
+    --danger: #dc2626; --danger-hover: #b91c1c;
+    --font: "Microsoft YaHei UI", "PingFang SC", system-ui, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font); font-size: 13px; line-height: 1.5;
+    padding: 14px 12px 22px;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; }
+
+  /* 顶栏 */
+  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .header h1 { font-size: 16.5px; font-weight: 700; letter-spacing: .5px; }
+  .header .sub { color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .header .quit { margin-left: auto; padding: 3px 10px; font-size: 12px; }
+
+  /* 卡片 */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+
+  /* 表单行 */
+  .field { margin-bottom: 8px; }
+  .field:last-child { margin-bottom: 0; }
+  .flabel { font-size: 11.5px; color: var(--muted); margin-bottom: 3px; }
+  .frow { display: flex; gap: 6px; align-items: center; }
+  input[type=text] {
+    flex: 1; min-width: 0; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 7px;
+    font: inherit; color: var(--text); background: #fff; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-weak); }
+  input[type=text][readonly] { background: #fafbfc; color: var(--muted); }
+
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 7px; background: #fff; color: var(--text);
+    transition: background .15s, border-color .15s; white-space: nowrap;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  button.accent {
+    background: var(--accent); color: #fff; border: none; font-weight: 600;
+    padding: 9px 0; border-radius: 8px; font-size: 14px;
+  }
+  button.accent:hover { background: var(--accent-hover); color: #fff; }
+  button.danger { background: var(--danger); color: #fff; border: none; }
+  button.danger:hover { background: var(--danger-hover); color: #fff; }
+  button.ghost { background: transparent; color: var(--muted); }
+
+  .vinfo { font-size: 11.5px; color: var(--faint); margin-top: 6px; min-height: 1.2em; }
+
+  /* 参数 2×2 */
+  .params { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  .param { display: flex; align-items: center; gap: 6px; }
+  .param label { font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+  .param input, .param select {
+    width: 74px; padding: 5px 7px; font: inherit; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; background: #fff; outline: none;
+  }
+  .param input:focus, .param select:focus { border-color: var(--accent); }
+  .hint { font-size: 11.5px; color: var(--faint); margin-top: 8px; }
+
+  /* 操作 + 进度 */
+  .actions { display: flex; gap: 8px; }
+  .actions .run { flex: 1; }
+  .progress-wrap { margin-top: 10px; }
+  .bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+  .bar > div {
+    height: 100%; width: 0%; background: var(--accent); border-radius: 999px;
+    transition: width .25s ease;
+  }
+  .bar.indet > div { width: 30%; animation: slide 1.2s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+  .status { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
+
+  /* 日志 */
+  .log-box {
+    background: #fbfbfb; border: 1px solid var(--border); border-radius: 8px;
+    height: 120px; overflow-y: auto; padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace; font-size: 11.5px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log-box .ts { color: var(--faint); margin-right: 6px; }
+  .log-box .success { color: #16a34a; }
+  .log-box .warn { color: #b45309; }
+  .log-box .error { color: #dc2626; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    background: #111827; color: #fff; padding: 7px 14px; border-radius: 7px;
+    font-size: 12px; display: none; z-index: 10; max-width: 85vw;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <span class="h1" style="font-size:16.5px;font-weight:700;">视频拉片</span>
+      <span class="sub">镜头检测 · 按镜头抽帧</span>
+    </div>
+    <button class="ghost quit" id="quitBtn" title="停止后台服务并退出">退出</button>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <div class="flabel">视频文件</div>
+      <div class="frow">
+        <input type="text" id="video" readonly placeholder="点击右侧选择视频">
+        <button type="button" id="pickVideoBtn">选择视频…</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="flabel">帧图保存到</div>
+      <div class="frow">
+        <input type="text" id="outDir" placeholder="留空 = 视频同目录">
+        <button type="button" id="pickDirBtn">选择目录…</button>
+      </div>
+    </div>
+    <div class="vinfo" id="videoInfo"></div>
+  </div>
+
+  <div class="card">
+    <div class="params">
+      <div class="param">
+        <label for="sens">灵敏度</label>
+        <input type="number" id="sens" min="5" max="60" step="1" value="10">
+      </div>
+      <div class="param">
+        <label for="minlen">最短镜头</label>
+        <input type="number" id="minlen" min="1" max="300" step="1" value="15" title="帧数，滤掉过短切点">
+      </div>
+      <div class="param">
+        <label for="num">每镜头抽帧</label>
+        <input type="number" id="num" min="1" max="10" step="1" value="2">
+      </div>
+      <div class="param">
+        <label for="width">输出宽度</label>
+        <select id="width">
+          <option value="orig">原始</option>
+          <option value="1920">1920</option>
+          <option value="1280">1280</option>
+          <option value="720">720</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint">阈值越小越敏感；输出宽度控制成图大小。帧图以时间点命名，如 test_video_00;00;02.400.jpg</div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button type="button" id="runBtn" class="accent run">开始分析</button>
+      <button type="button" id="openDirBtn" title="在资源管理器中打开输出目录">打开目录</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="bar" id="bar"><div></div></div>
+    </div>
+    <div class="status" id="status">就绪：选择视频后点「开始分析」</div>
+  </div>
+
+  <div class="card">
+    <div class="flabel">运行日志</div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const state = { lastSeq: 0, running: false, settingsApplied: false };
+let toastTimer = null;
+
+function showToast(msg, ms = 2600) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), ms);
+}
+
+/* ---------- 轮询服务端状态 ---------- */
+async function poll() {
+  try {
+    const r = await fetch("/api/state");
+    const s = await r.json();
+    applySettingsIfNeeded(s.settings);
+    applyRunning(s.running);
+    renderProgress(s);
+    $("status").textContent = s.status || "";
+    $("videoInfo").textContent = s.video_info || "";
+    appendLogs(s.logs || [], s.log_seq || 0);
+  } catch (e) {
+    $("status").textContent = "无法连接本地服务，服务可能已退出。";
+  } finally {
+    setTimeout(poll, 300);
+  }
+}
+
+function applySettingsIfNeeded(settings) {
+  if (!settings || state.settingsApplied) return;
+  if (settings.sensitivity != null) $("sens").value = settings.sensitivity;
+  if (settings.min_scene_len != null) $("minlen").value = settings.min_scene_len;
+  if (settings.num_images != null) $("num").value = settings.num_images;
+  const w = settings.output_width == null ? "orig" : String(settings.output_width);
+  if (["orig", "1920", "1280", "720"].includes(w)) $("width").value = w;
+  if (settings.last_out_dir) $("outDir").value = settings.last_out_dir || "";
+  state.settingsApplied = true;
+}
+
+function applyRunning(running) {
+  if (state.running === running) return;
+  state.running = running;
+  const btn = $("runBtn");
+  if (running) {
+    btn.textContent = "停止";
+    btn.classList.add("danger");
+    btn.classList.remove("accent");
+  } else {
+    btn.textContent = "开始分析";
+    btn.classList.add("accent");
+    btn.classList.remove("danger");
+  }
+}
+
+function renderProgress(s) {
+  const bar = $("bar");
+  const inner = bar.firstElementChild;
+  let pct = 0, indet = false;
+  if (s.phase === "detect") {
+    if (s.total && s.total > 0) pct = Math.min(100, (s.done / s.total) * 100);
+    else indet = true;
+  } else if (s.phase === "save") {
+    pct = s.total > 0 ? Math.min(100, (s.done / s.total) * 100) : 0;
+  }
+  bar.classList.toggle("indet", indet);
+  inner.style.width = (indet ? 30 : pct) + "%";
+}
+
+function appendLogs(logs, seq) {
+  if (seq <= state.lastSeq && state.lastSeq !== 0) return;
+  const box = $("logBox");
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  const fresh = state.lastSeq === 0 ? logs : logs.slice(-Math.max(0, seq - state.lastSeq));
+  state.lastSeq = seq;
+  if (!fresh.length) return;
+  const frag = document.createDocumentFragment();
+  for (const [ts, level, msg] of fresh) {
+    const div = document.createElement("div");
+    const t = document.createElement("span");
+    t.className = "ts"; t.textContent = "[" + ts + "]";
+    const m = document.createElement("span");
+    m.className = /^(success|warn|error)$/.test(level) ? level : "info";
+    m.textContent = msg;
+    div.appendChild(t); div.appendChild(m);
+    frag.appendChild(div);
+  }
+  box.appendChild(frag);
+  while (box.childElementCount > 800) box.removeChild(box.firstElementChild);
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- 请求 ---------- */
+async function post(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : "{}",
+  });
+  return r.json().catch(() => ({}));
+}
+
+function readParams() {
+  return {
+    sensitivity: clampInt($("sens").value, 5, 60, 10),
+    min_scene_len: clampInt($("minlen").value, 1, 300, 15),
+    num_images: clampInt($("num").value, 1, 10, 2),
+    output_width: $("width").value === "orig" ? null : clampInt($("width").value, 720, 1920, null),
+  };
+}
+function clampInt(raw, lo, hi, dflt) {
+  const v = parseInt(raw, 10);
+  if (Number.isNaN(v)) return dflt;
+  if (lo != null && v < lo) return lo;
+  if (hi != null && v > hi) return hi;
+  return v;
+}
+
+/* ---------- 事件 ---------- */
+$("pickVideoBtn").addEventListener("click", async () => {
+  const r = await post("/api/pick_video");
+  if (r.path) $("video").value = r.path;
+});
+
+$("pickDirBtn").addEventListener("click", async () => {
+  const r = await post("/api/pick_dir");
+  if (r.path) $("outDir").value = r.path;
+});
+
+$("openDirBtn").addEventListener("click", async () => {
+  const r = await post("/api/open_dir", {
+    out_dir: $("outDir").value.trim(),
+    video: $("video").value.trim(),
+  });
+  if (r.error) showToast(r.error);
+  else if (r.out_dir) $("outDir").value = r.out_dir; // 回填实际目录，便于下次直接使用
+});
+
+$("runBtn").addEventListener("click", async () => {
+  if (state.running) { await post("/api/stop"); return; }
+  const video = $("video").value.trim();
+  if (!video) { showToast("请先选择视频"); return; }
+  const r = await post("/api/analyze", {
+    video,
+    out_dir: $("outDir").value.trim(),
+    params: readParams(),
+  });
+  if (r.error) showToast(r.error);
+  else $("status").textContent = "正在准备…";
+});
+
+$("quitBtn").addEventListener("click", async () => {
+  try { await post("/api/quit"); } catch (e) { /* 忽略 */ }
+  window.close();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && (e.key === "o" || e.key === "O")) {
+    e.preventDefault();
+    $("pickVideoBtn").click();
+  }
+});
+
+poll();
+</script>
+</body>
+</html>
