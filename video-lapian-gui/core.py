@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-核心逻辑（无 GUI 依赖）：镜头检测 + 按镜头抽取代表帧。
+核心逻辑（无 GUI 依赖）：镜头检测 + 按镜头抽取代表帧 + 音轨提取 + 拉片数据 JSON。
 - 检测阶段：ContentDetector，可在线程间干净取消（SceneManager.stop）
 - 抽帧阶段：自研逐镜头循环（不用 save_images，后者起 daemon 线程无法中途打断），
   逐个镜头 seek/read 并按需缩放，可使用取消令牌在镜头边界停止
+- 音轨：ffmpeg 提取（优先系统 ffmpeg，缺省回退 imageio-ffmpeg 自带的二进制）
+- 拉片数据：输出 scene_analysis.json（镜头边界 + 帧清单 + 音轨路径，供后续 AI 拉片使用）
 - 回调协议：
     log(level, msg)      level ∈ info / success / warn / error，均在调用方线程触发
     progress(done, total, phase)   phase ∈ detect（按帧） / save（按图）
@@ -11,9 +13,11 @@
 """
 import json
 import os
+import shutil
+import subprocess
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 import cv2
@@ -72,6 +76,9 @@ class AnalyzeResult:
     out_dir: str = ""
     elapsed: float = 0.0            # 秒
     error: str = ""
+    scenes: list = field(default_factory=list)   # 拉片数据：镜头边界 + 帧清单
+    json_file: str = ""             # scene_analysis.json 路径（给后续 AI 拉片）
+    audio_file: str = ""            # 音轨文件路径（未提取/失败为空）
 
 
 @dataclass
@@ -219,6 +226,107 @@ def derive_default_outdir(video_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 音轨提取 / 拉片数据 JSON
+# ---------------------------------------------------------------------------
+SCENE_JSON_NAME = "scene_analysis.json"   # 给后续 AI 拉片的结构化数据
+AUDIO_NAME = "audio.m4a"
+
+
+def _find_ffmpeg() -> Optional[str]:
+    """优先系统 ffmpeg，其次 imageio-ffmpeg 自带的二进制。"""
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def extract_audio(video_path: str, out_dir: str, log) -> str:
+    """用 ffmpeg 提取音轨为 audio.m4a；无 ffmpeg 或无音轨时返回空串。"""
+    ffmpeg = _find_ffmpeg()
+    if not ffmpeg:
+        log(L_WARN, "跳过音轨提取：未找到 ffmpeg（可运行 setup.bat 安装依赖后重试）")
+        return ""
+    out = os.path.join(out_dir, AUDIO_NAME)
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", video_path,
+           "-vn", "-acodec", "aac", "-b:a", "128k", out]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except Exception as exc:
+        log(L_WARN, f"音轨提取失败：{exc}")
+        return ""
+    if proc.returncode != 0 or not os.path.isfile(out):
+        err = (proc.stderr or "").strip().splitlines()
+        log(L_WARN, f"音轨提取失败：{err[-1] if err else '未知错误'}（视频可能没有音轨）")
+        return ""
+    log(L_SUCCESS, f"已提取音轨：{out}")
+    return out
+
+
+def _build_scenes(scene_list, scene_frames: dict) -> list:
+    """镜头边界 + 每镜头代表帧清单（scene_frames: index -> [frame dict]）。"""
+    scenes = []
+    for idx, (start, end) in enumerate(scene_list, 1):
+        scenes.append({
+            "index": idx,
+            "start_sec": round(start.seconds, 3),
+            "end_sec": round(end.seconds, 3),
+            "duration_sec": round(end.seconds - start.seconds, 3),
+            "start_timecode": start.get_timecode(),
+            "end_timecode": end.get_timecode(),
+            "frames": scene_frames.get(idx, []),
+        })
+    return scenes
+
+
+def _write_scene_json(out_dir, video_path, video_info, params,
+                      scenes, images_saved, audio_file) -> str:
+    """写入 scene_analysis.json（AI 可读的拉片数据）；失败返回空串。"""
+    data = {
+        "schema_version": 1,
+        "tool": "拉片辅助",
+        "video": {
+            "path": video_path,
+            "name": os.path.splitext(os.path.basename(video_path))[0],
+            **video_info,
+        },
+        "params": {
+            "sensitivity": params.sensitivity,
+            "min_scene_len_frames": params.min_scene_len,
+            "images_per_scene": params.num_images,
+            "output_width": params.output_width,
+        },
+        "assets": {
+            "frames_dir": os.path.abspath(out_dir),
+            "audio_file": audio_file or None,
+        },
+        "image_count": images_saved,
+        "scenes": scenes,
+    }
+    path = os.path.join(out_dir, SCENE_JSON_NAME)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return path
+    except OSError:
+        return ""
+
+
+def _finalize_assets(video_path, out_dir, video_info, params,
+                     scenes, images_saved, log):
+    """收尾：提取音轨 + 写拉片 JSON，返回 (audio_file, json_path)。"""
+    audio_file = extract_audio(video_path, out_dir, log)
+    json_path = _write_scene_json(out_dir, video_path, video_info, params,
+                                  scenes, images_saved, audio_file)
+    if json_path:
+        log(L_SUCCESS, f"拉片数据已写入：{json_path}")
+    return audio_file, json_path
+
+
+# ---------------------------------------------------------------------------
 # 主流程
 # ---------------------------------------------------------------------------
 def analyze_video(
@@ -272,10 +380,21 @@ def analyze_video(
         return AnalyzeResult(STATUS_ERROR, error=str(exc))
 
     total_frames = 0
+    video_info = {}
     try:
         total_frames = video_stream.duration.frame_num
+        duration = video_stream.duration
+        if duration is not None:
+            video_info["duration_sec"] = round(duration.seconds, 3)
+            video_info["total_frames"] = duration.frame_num
+        frame_size = video_stream.frame_size
+        if frame_size:
+            video_info["width"], video_info["height"] = frame_size
+        fps = video_stream.frame_rate
+        if fps:
+            video_info["fps"] = float(fps)
     except Exception:
-        total_frames = 0
+        pass
 
     # ---- 检测阶段 ----
     scene_list = []
@@ -314,8 +433,11 @@ def analyze_video(
             return _finish(token, 0, 0, out_dir, start)
         log(L_WARN, "未检测到镜头边界：画面可能全程无变化，或参数偏钝")
         log(L_WARN, "建议：调低「灵敏度」，或把「最短镜头长度」调小")
+        audio_file, json_path = _finalize_assets(
+            video_path, out_dir, video_info, params, [], 0, log)
         return AnalyzeResult(STATUS_COMPLETED, scene_count=0, images_saved=0,
-                             out_dir=out_dir, elapsed=time.monotonic() - start)
+                             out_dir=out_dir, elapsed=time.monotonic() - start,
+                             json_file=json_path, audio_file=audio_file)
 
     # ---- 抽帧阶段 ----
     try:
@@ -333,6 +455,7 @@ def analyze_video(
 
     total_images = n * params.num_images
     images_saved = 0
+    scene_frames = {}       # 镜头 index -> [代表帧 dict]，供拉片 JSON 使用
     for i, scene_tcs in enumerate(timecode_list, start=1):
         if token.canceled:
             break
@@ -356,6 +479,11 @@ def analyze_video(
                 fname = f"{video_stream.name}_{tc.get_timecode().replace(':', ';')}.jpg"
                 buf.tofile(os.path.join(out_dir, fname))
                 images_saved += 1
+                scene_frames.setdefault(i, []).append({
+                    "file": fname,
+                    "timecode": tc.get_timecode(),
+                    "time_sec": round(tc.seconds, 3),
+                })
                 if progress is not None:
                     progress(images_saved, total_images, "save")
             except OSError as exc:
@@ -365,17 +493,24 @@ def analyze_video(
                 log(L_WARN, f"镜头 {i}：{tc} 保存失败（{exc}），跳过")
                 continue
 
+    # ---- 收尾：音轨 + 拉片数据 JSON ----
+    scenes = _build_scenes(scene_list, scene_frames)
+    audio_file, json_path = _finalize_assets(
+        video_path, out_dir, video_info, params, scenes, images_saved, log)
     if token.canceled:
         log(L_WARN, f"已停止：共保存 {images_saved} 张帧图（目标 {total_images} 张）")
     else:
         log(L_SUCCESS, f"已保存 {images_saved} 张帧图")
-    return _finish(token, n, images_saved, out_dir, start)
+    return _finish(token, n, images_saved, out_dir, start,
+                   scenes=scenes, json_file=json_path, audio_file=audio_file)
 
 
-def _finish(token, n, saved, out_dir, start, error: str = "") -> AnalyzeResult:
+def _finish(token, n, saved, out_dir, start, error: str = "",
+            scenes=None, json_file: str = "", audio_file: str = "") -> AnalyzeResult:
     status = STATUS_CANCELED if token.canceled else (STATUS_ERROR if error else STATUS_COMPLETED)
     return AnalyzeResult(status=status, scene_count=n, images_saved=saved,
-                         out_dir=out_dir, elapsed=time.monotonic() - start, error=error)
+                         out_dir=out_dir, elapsed=time.monotonic() - start, error=error,
+                         scenes=scenes or [], json_file=json_file, audio_file=audio_file)
 
 
 def _resize_to_width(frame: np.ndarray, output_width: Optional[int]) -> np.ndarray:

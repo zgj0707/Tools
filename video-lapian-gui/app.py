@@ -27,7 +27,7 @@ class LapianApp:
 
     def __init__(self, root):
         self.root = root
-        root.title("本地视频拉片 · 镜头检测抽帧")
+        root.title("拉片辅助 · 镜头检测抽帧")
         root.configure(bg=self.BG)
         root.minsize(640, 560)
 
@@ -383,6 +383,10 @@ class LapianApp:
             self.log(f"完成：共 {result.scene_count} 个镜头，保存 {result.images_saved} 张帧图"
                      f" · 耗时 {core.fmt_elapsed(result.elapsed)}", core.L_SUCCESS)
         self.log(f"输出目录：{result.out_dir}", core.L_INFO)
+        if result.json_file:
+            self.log(f"拉片数据：{result.json_file}", core.L_INFO)
+        if result.audio_file:
+            self.log(f"音轨：{result.audio_file}", core.L_INFO)
 
     # ------------------------------------------------------------------
     # 按钮状态 / 参数读取

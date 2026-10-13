@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-本地视频拉片 · Web 界面（浏览器打开，零第三方依赖，仅标准库）
+拉片辅助 · Web 界面（浏览器打开，零第三方依赖，仅标准库）
 
 - 本地 HTTP 服务：ThreadingHTTPServer 提供页面与 JSON API
 - 核心逻辑全部复用 core.py（镜头检测 / 抽帧 / 取消 / 进度回调）
@@ -26,7 +26,7 @@ BASE_PORT = 8765
 MAX_LOGS = 500
 APP_WINDOW_SIZE = "440,540"  # --app 独立窗口尺寸
 # 独立 Edge 用户目录：强制 --app/--window-size 生效（避免并入已在运行的浏览器会话）
-EDGE_PROFILE = os.path.join(os.environ.get("LOCALAPPDATA") or HERE, "视频拉片-edge")
+EDGE_PROFILE = os.path.join(os.environ.get("LOCALAPPDATA") or HERE, "拉片辅助-edge")
 
 VIDEO_TYPES = [("视频文件", "*.mp4 *.mkv *.avi *.mov *.flv *.wmv *.ts *.m4v *.webm"),
                ("所有文件", "*.*")]
@@ -149,6 +149,10 @@ def _finish_summary(r):
                              f" · 耗时 {core.fmt_elapsed(r.elapsed)}")
         state.status = f"完成：{r.scene_count} 个镜头，保存 {r.images_saved} 张帧图"
     _log(core.L_INFO, f"输出目录：{r.out_dir}")
+    if r.json_file:
+        _log(core.L_INFO, f"拉片数据：{r.json_file}")
+    if r.audio_file:
+        _log(core.L_INFO, f"音轨：{r.audio_file}")
 
 
 # ---------------------------------------------------------------------------
@@ -429,14 +433,14 @@ def _existing_instance():
 def main():
     if _existing_instance():
         url = f"http://127.0.0.1:{BASE_PORT}/"
-        print(f"[视频拉片] 检测到已有实例，直接打开：{url}")
+        print(f"[拉片辅助] 检测到已有实例，直接打开：{url}")
         _open_app_window(url)
         return
     port = _pick_port()
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{port}/"
     threading.Timer(0.5, lambda: _open_app_window(url)).start()
-    print(f"[视频拉片] 服务已启动：{url}")
+    print(f"[拉片辅助] 服务已启动：{url}")
     print("关闭页面右上角「退出」按钮或按 Ctrl+C 可停止。")
     try:
         server.serve_forever()

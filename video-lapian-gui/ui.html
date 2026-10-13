@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>视频拉片 · 镜头检测抽帧</title>
+<title>拉片辅助 · 镜头检测抽帧</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232563eb'/%3E%3Cpath d='M9 9h6v6H9z' fill='white'/%3E%3Crect x='9' y='9' width='6' height='6' fill='white'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -112,8 +112,8 @@
 <div class="wrap">
   <div class="header">
     <div>
-      <span class="h1" style="font-size:16.5px;font-weight:700;">视频拉片</span>
-      <span class="sub">镜头检测 · 按镜头抽帧</span>
+      <span class="h1" style="font-size:16.5px;font-weight:700;">拉片辅助</span>
+      <span class="sub">镜头检测抽帧 · 音轨提取 · 拉片数据</span>
     </div>
     <button class="ghost quit" id="quitBtn" title="停止后台服务并退出">退出</button>
   </div>
@@ -160,7 +160,7 @@
         </select>
       </div>
     </div>
-    <div class="hint">阈值越小越敏感；输出宽度控制成图大小。帧图以时间点命名，如 test_video_00;00;02.400.jpg</div>
+    <div class="hint">阈值越小越敏感；输出宽度控制成图大小。完成会同时产出帧图、音轨 audio.m4a 与拉片数据 scene_analysis.json（供 AI 后续拉片）。</div>
   </div>
 
   <div class="card">
